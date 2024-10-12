@@ -15,4 +15,4 @@ class ShipmentOut(BaseModel):
     shipped_at: datetime = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True
