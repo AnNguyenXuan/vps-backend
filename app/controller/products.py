@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from app.models.products import Product
+from app.models.product import Product
 from app.schemas.products import ProductCreate
 
 

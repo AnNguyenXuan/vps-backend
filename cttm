@@ -1,0 +1,11 @@
+app/
+│
+├── command/
+├── configuration/
+├── controller/
+├── exceptions/
+├── models/
+├── services/
+├── main.py
+├── .env
+└── requirements.txt

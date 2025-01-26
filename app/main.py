@@ -1,23 +1,25 @@
 from fastapi import FastAPI
-from tortoise.contrib.fastapi import register_tortoise
-from app.controller import users, products, orders, reviews, payments, shipments
+from contextlib import asynccontextmanager
+from app.configuration.database import engine, Base
 
-app = FastAPI()
+# Import model để SQLAlchemy nhận diện
+from app.models.user import User
+# from app.models.product import Product
 
-# Đăng ký các routers từ các controllers
-app.include_router(users.router, prefix="/users", tags=["Users"])
-app.include_router(products.router, prefix="/products", tags=["Products"])
-app.include_router(orders.router, prefix="/orders", tags=["Orders"])
-app.include_router(reviews.router, prefix="/reviews", tags=["Reviews"])
-app.include_router(payments.router, prefix="/payments", tags=["Payments"])
-app.include_router(shipments.router, prefix="/shipments", tags=["Shipments"])
+# Lifespan context manager để thay thế @app.on_event("startup")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Code trước khi ứng dụng khởi động (startup)
+    async with engine.begin() as conn:
+        # Tạo bảng nếu chưa tồn tại
+        await conn.run_sync(Base.metadata.create_all)
+    yield
+    # Code sau khi ứng dụng tắt (shutdown)
+    # Nếu cần làm sạch hoặc đóng kết nối DB, bạn có thể làm ở đây
 
-# Kết nối với cơ sở dữ liệu PostgreSQL và đăng ký tất cả model
-register_tortoise(
-    app,
-    db_url="postgres://Thang:123456@localhost:5432/dbname",
-    modules={"models": ["app.models.users", "app.models.products", "app.models.orders", 
-                        "app.models.payments", "app.models.shipments", "app.models.reviews"]},
-    generate_schemas=True,
-    add_exception_handlers=True,
-)
+# Khởi tạo FastAPI và đăng ký Lifespan event handler
+app = FastAPI(lifespan=lifespan)
+
+@app.get("/")
+async def read_root():
+    return {"message": "Welcome to the FastAPI E-Commerce backend!"}
