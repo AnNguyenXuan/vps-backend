@@ -1,6 +1,8 @@
+# app/main.py
 from fastapi import FastAPI
-from contextlib import asynccontextmanager
+from app.controller.group import router as group_router
 from app.configuration.database import engine, Base
+from contextlib import asynccontextmanager
 
 # Import model để SQLAlchemy nhận diện
 from app.models.user import User
@@ -19,6 +21,8 @@ async def lifespan(app: FastAPI):
 
 # Khởi tạo FastAPI và đăng ký Lifespan event handler
 app = FastAPI(lifespan=lifespan)
+
+app.include_router(group_router)
 
 @app.get("/")
 async def read_root():

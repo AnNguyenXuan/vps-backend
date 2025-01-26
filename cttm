@@ -2,9 +2,14 @@ app/
 │
 ├── command/
 ├── configuration/
+    └── database.py
 ├── controller/
 ├── exceptions/
 ├── models/
+    │
+    ├──product.py
+    └──user.py
+├── schemas/
 ├── services/
 ├── main.py
 ├── .env
