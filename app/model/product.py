@@ -1,4 +1,3 @@
-# app/models/product.py
 from sqlalchemy import Column, Integer, String, Text, Boolean, TIMESTAMP, ForeignKey
 from sqlalchemy.sql import func
 from app.configuration.database import Base

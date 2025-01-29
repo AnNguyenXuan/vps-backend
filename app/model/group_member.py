@@ -1,4 +1,3 @@
-# app/models/group_member.py
 from sqlalchemy import Column, Integer, ForeignKey, UniqueConstraint
 from app.configuration.database import Base
 

@@ -1,4 +1,3 @@
-# app/services/user_permission.py
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.repository.user_permission_repository import create_user_permission, get_user_permission_by_id
 from app.schema.user_permission_schema import UserPermissionCreate

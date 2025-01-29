@@ -1,4 +1,3 @@
-# app/schemas/group_permission.py
 from pydantic import BaseModel
 
 class GroupPermissionBase(BaseModel):

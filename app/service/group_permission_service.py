@@ -1,4 +1,3 @@
-# app/services/group_permission.py
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.repository.group_permission_repository import create_group_permission, get_group_permission_by_id
 from app.schema.group_permission_schema import GroupPermissionCreate

@@ -1,4 +1,3 @@
-# app/schemas/product.py
 from pydantic import BaseModel
 
 class ProductBase(BaseModel):

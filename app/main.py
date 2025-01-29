@@ -1,4 +1,3 @@
-# app/main.py
 from fastapi import FastAPI
 from app.configuration.database import engine, Base
 from app.controller.category_controller  import router as category_router
@@ -12,7 +11,6 @@ from app.controller.user_permission_controller import router as user_permission_
 
 from contextlib import asynccontextmanager
 
-# Import toàn bộ model để SQLAlchemy nhận diện
 from app.model.user import User
 from app.model.product import Product
 from app.model.group import Group
@@ -22,7 +20,6 @@ from app.model.category import Category
 from app.model.group_permission import GroupPermission
 from app.model.user_permission import UserPermission
 
-# Lifespan context manager để thay thế @app.on_event("startup")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Code trước khi ứng dụng khởi động (startup)

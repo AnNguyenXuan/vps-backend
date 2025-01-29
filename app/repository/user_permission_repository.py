@@ -1,4 +1,3 @@
-# app/repository/user_permission.py
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from app.model.user_permission import UserPermission

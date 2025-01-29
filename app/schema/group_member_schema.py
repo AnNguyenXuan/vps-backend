@@ -1,4 +1,3 @@
-# app/schemas/group_member.py
 from pydantic import BaseModel
 
 class GroupMemberBase(BaseModel):

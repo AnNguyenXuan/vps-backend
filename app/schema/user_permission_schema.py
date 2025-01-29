@@ -1,4 +1,3 @@
-# app/schemas/user_permission.py
 from pydantic import BaseModel
 
 class UserPermissionBase(BaseModel):

@@ -1,4 +1,3 @@
-# app/schemas/group.py
 from pydantic import BaseModel
 
 class GroupBase(BaseModel):

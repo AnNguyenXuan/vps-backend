@@ -1,4 +1,3 @@
-# app/models/category.py
 from sqlalchemy import Column, Integer, String, Text, ForeignKey
 from app.configuration.database import Base
 

@@ -1,4 +1,3 @@
-# app/controller/user_permission.py
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.schema.user_permission_schema import UserPermissionCreate, UserPermissionRead

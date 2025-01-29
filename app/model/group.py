@@ -1,4 +1,3 @@
-# app/models/group.py
 from sqlalchemy import Column, Integer, String, Text
 from app.configuration.database import Base
 

@@ -1,4 +1,3 @@
-# app/models/group_permission.py
 from sqlalchemy import Column, Integer, ForeignKey, Boolean
 from app.configuration.database import Base
 

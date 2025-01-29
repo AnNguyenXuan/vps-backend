@@ -1,4 +1,3 @@
-# app/repository/group_permission.py
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from app.model.group_permission import GroupPermission
