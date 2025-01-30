@@ -45,4 +45,4 @@ app.include_router(user_permission_router)
 
 @app.get("/")
 async def read_root():
-    return {"message": "Welcome to the FastAPI E-Commerce backend!"}
+    return {"message": "Welcome to the backend of Scime E-Commerce!"}
