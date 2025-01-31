@@ -49,6 +49,6 @@ app/
 │   ├── product_service.py
 │   ├── user_service.py
 │   └── user_permission_service.py
-├── main.py
-├── .env
-└── requirements.txt
+└── main.py
+.env
+requirements.txt
