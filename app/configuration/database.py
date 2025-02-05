@@ -17,7 +17,3 @@ AsyncSessionLocal = sessionmaker(bind=engine, class_=AsyncSession, expire_on_com
 # Base cho các model
 Base = declarative_base()
 
-# Dependency để lấy session
-async def get_db():
-    async with AsyncSessionLocal() as session:
-        yield session

@@ -17,3 +17,11 @@ class UserRead(UserBase):
 
     class Config:
         orm_mode = True
+
+class UserUpdate(UserBase):
+    id: int
+    created_at: str
+    updated_at: str
+
+    class Config:
+        orm_mode = True
