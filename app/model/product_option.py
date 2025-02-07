@@ -10,5 +10,3 @@ class ProductOption(Base):
     price = Column(Numeric(precision=10, scale=2), nullable=True)
     stock = Column(Integer, nullable=False)
 
-    # Relationship với Product
-    product = relationship("Product", back_populates="options")

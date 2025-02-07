@@ -1,7 +1,7 @@
 from sqlalchemy.future import select
 from app.model.user import User
 from app.configuration.database import AsyncSessionLocal
-
+from sqlalchemy.exc import SQLAlchemyError
 
 
 class UserRepository:
@@ -22,11 +22,16 @@ class UserRepository:
             await session.refresh(user)
             return user
 
-    async def delete_user(self, user: User):
-        """ Xóa người dùng """
+    async def delete_user(self, user: User) -> bool:
+        """ Xóa người dùng và trả về True nếu thành công, False nếu thất bại """
         async with AsyncSessionLocal() as session:
-            await session.delete(user)
-            await session.commit()
+            try:
+                await session.delete(user)
+                await session.commit()
+                return True  # Xóa thành công
+            except SQLAlchemyError:
+                await session.rollback()  # Quay lại nếu có lỗi
+                return False  # Xóa thất bại
 
     async def get_active_users_paginated(self, page: int, limit: int):
         """ Lấy danh sách user đang hoạt động (is_active=True) với phân trang """
