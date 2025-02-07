@@ -13,3 +13,9 @@ class CategoryRead(CategoryBase):
 
     class Config:
         orm_mode = True
+
+class CategoryUpdate(CategoryBase):
+    id: int
+
+    class Config:
+        orm_mode = True

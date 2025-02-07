@@ -53,7 +53,26 @@ class ProductRepository:
     async def find_all(self) -> list:
         """Lấy tất cả sản phẩm"""
         async with AsyncSessionLocal() as session:
-            result = await session.execute(
-                select(Product)
-            )
+            result = await session.execute(select(Product))
             return result.scalars().all()
+
+    # --- Các phương thức ghi (create, update) được bổ sung ---
+
+    async def create(self, product: Product) -> Product:
+        """Tạo mới một sản phẩm trong cơ sở dữ liệu"""
+        async with AsyncSessionLocal() as session:
+            session.add(product)
+            await session.commit()
+            await session.refresh(product)
+            return product
+
+    async def update(self, product: Product) -> Product:
+        """
+        Cập nhật thông tin của sản phẩm.
+        Ở đây, chúng ta add lại đối tượng (có thể đã được thay đổi) rồi commit và refresh.
+        """
+        async with AsyncSessionLocal() as session:
+            session.add(product)
+            await session.commit()
+            await session.refresh(product)
+            return product

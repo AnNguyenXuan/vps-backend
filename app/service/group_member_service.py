@@ -1,14 +1,15 @@
 from fastapi import HTTPException, status
 from app.repository.group_member_repository import GroupMemberRepository
 from app.model.group_member import GroupMember
-from app.configuration.database import AsyncSessionLocal
-from app.exception import AppException  # Giả sử bạn có định nghĩa ngoại lệ riêng
+from .user_service import UserService
+from .group_service import GroupService
+# from app.exception import AppException  # Giả sử bạn có định nghĩa ngoại lệ riêng
 
 class GroupMemberService:
-    def __init__(self, group_member_repository: GroupMemberRepository, user_service, group_service):
-        self.group_member_repository = group_member_repository
-        self.user_service = user_service
-        self.group_service = group_service
+    def __init__(self):
+        self.group_member_repository = GroupMemberRepository()
+        self.user_service = UserService()
+        self.group_service = GroupService()
 
     async def add_user_to_group(self, data: dict) -> GroupMember:
         """
@@ -19,11 +20,7 @@ class GroupMemberService:
         group = await self.group_service.get_group_by_id(data["groupId"])
 
         group_member = GroupMember(user=user, group=group)
-
-        async with AsyncSessionLocal() as session:
-            session.add(group_member)
-            await session.commit()
-            await session.refresh(group_member)
+        group_member = await self.group_member_repository.add(group_member)
         return group_member
 
     async def remove_user_from_group(self, data: dict) -> None:
@@ -35,9 +32,7 @@ class GroupMemberService:
 
         group_member = await self.group_member_repository.find_by_user_and_group(user, group)
         if group_member:
-            async with AsyncSessionLocal() as session:
-                await session.delete(group_member)
-                await session.commit()
+            await self.group_member_repository.delete(group_member)
 
     async def find_groups_by_user(self, user) -> list:
         """

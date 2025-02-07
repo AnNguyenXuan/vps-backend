@@ -5,7 +5,7 @@ from app.controller.group_controller import router as group_router
 from app.controller.group_member_controller import router as group_member_router
 from app.controller.group_permission_controller import router as group_permission_router
 from app.controller.permission_controller import router as permission_router
-from app.controller.product_controller import router as product_router
+# from app.controller.product_controller import router as product_router
 from app.controller.user_controller import router as user_router
 from app.controller.user_permission_controller import router as user_permission_router
 
@@ -39,7 +39,7 @@ app.include_router(group_router)
 app.include_router(group_member_router)
 app.include_router(group_permission_router)
 app.include_router(user_router)
-app.include_router(product_router)
+# app.include_router(product_router)
 app.include_router(permission_router)
 app.include_router(user_permission_router)
 

@@ -1,16 +1,16 @@
 from fastapi import HTTPException, status
 from app.repository.user_permission_repository import UserPermissionRepository
 from app.model.user_permission import UserPermission
-from app.configuration.database import AsyncSessionLocal
-from app.exception import AppException  # Giả sử bạn có định nghĩa ngoại lệ riêng
+from .user_service import UserService
+from .permission_service import PermissionService
+# from app.exception import AppException  # Giả sử bạn có định nghĩa ngoại lệ riêng
 
 
 class UserPermissionService:
-    def __init__(self, repository: UserPermissionRepository, entity_manager, user_service, permission_service):
-        self.repository = repository
-        self.entity_manager = entity_manager  # Có thể là AsyncSessionLocal hoặc một đối tượng quản lý session riêng
-        self.user_service = user_service
-        self.permission_service = permission_service
+    def __init__(self):
+        self.repository = UserPermissionRepository()
+        self.user_service = UserService()
+        self.permission_service = PermissionService()
 
     async def assign_permissions(self, data: dict) -> list:
         """
@@ -24,37 +24,33 @@ class UserPermissionService:
               'target': nếu bằng "all" thì target_id = None, ngược lại target_id = giá trị target.
         """
         user = await self.user_service.get_user_by_id(data.get("user_id"))
-        if not user:
-            raise AppException("E1004")  # Người dùng không tồn tại
+        # if not user:
+        #     raise AppException("E1004")  # Người dùng không tồn tại
 
         assigned_permissions = []
+        user_permissions_to_add = []
 
-        async with AsyncSessionLocal() as session:
-            for permission_key, permission_data in data.get("permissions", {}).items():
-                permission = await self.permission_service.get_permission_by_name(permission_key)
-                if not permission:
-                    continue  # Bỏ qua nếu không tìm thấy quyền
+        for permission_key, permission_data in data.get("permissions", {}).items():
+            permission = await self.permission_service.get_permission_by_name(permission_key)
+            if not permission:
+                continue  # Bỏ qua nếu không tìm thấy quyền
 
-                user_permission = UserPermission()
-                user_permission.user = user
-                user_permission.permission = permission
-                user_permission.is_active = permission_data.get("is_active", True)
-                user_permission.is_denied = permission_data.get("is_denied", False)
-                if "target" in permission_data:
-                    if permission_data["target"] == "all":
-                        user_permission.target_id = None
-                    else:
-                        user_permission.target_id = permission_data["target"]
-                else:
-                    raise AppException("E1004")
-                session.add(user_permission)
-                assigned_permissions.append({
-                    "permission": permission_key,
-                    "status": "assigned"
-                })
+            # if "target" not in permission_data:
+            #     raise AppException("E1004")
+            user_permission = UserPermission()
+            user_permission.user = user
+            user_permission.permission = permission
+            user_permission.is_active = permission_data.get("is_active", True)
+            user_permission.is_denied = permission_data.get("is_denied", False)
+            user_permission.target_id = None if permission_data["target"] == "all" else permission_data["target"]
 
-            await session.commit()
+            user_permissions_to_add.append(user_permission)
+            assigned_permissions.append({
+                "permission": permission_key,
+                "status": "assigned"
+            })
 
+        await self.repository.bulk_insert(user_permissions_to_add)
         return assigned_permissions
 
     async def set_permission(self, user, permissions: list) -> list:
@@ -63,48 +59,37 @@ class UserPermissionService:
         Tham số permissions là danh sách các đối tượng Permission.
         """
         user_permissions = []
+        user_permissions_to_add = []
+        for permission in permissions:
+            # Kiểm tra đối tượng permission phải là instance của Permission
+            if not hasattr(permission, "id"):
+                raise ValueError("Each item in permissions array must be an instance of Permission.")
 
-        async with AsyncSessionLocal() as session:
-            for permission in permissions:
-                # Kiểm tra đối tượng permission phải là instance của Permission
-                if not hasattr(permission, "id"):
-                    raise ValueError("Each item in permissions array must be an instance of Permission.")
+            user_permission = UserPermission()
+            user_permission.user = user
+            user_permission.permission = permission
+            user_permission.is_active = True
+            user_permission.is_denied = False
+            user_permission.target_id = None
 
-                user_permission = UserPermission()
-                user_permission.user = user
-                user_permission.permission = permission
-                user_permission.is_active = True
-                user_permission.is_denied = False
-                user_permission.target_id = None
+            user_permissions_to_add.append(user_permission)
+            user_permissions.append(user_permission)
 
-                session.add(user_permission)
-                user_permissions.append(user_permission)
-
-            await session.commit()
-
+        await self.repository.bulk_insert(user_permissions_to_add)
         return user_permissions
 
     async def find_permissions_by_user(self, user) -> list:
         """
         Lấy danh sách các quyền (UserPermission) của người dùng.
         """
-        async with AsyncSessionLocal() as session:
-            result = await session.execute(
-                select(UserPermission).where(UserPermission.user_id == user.id)
-            )
-            return result.scalars().all()
+        return await self.repository.find_by_user_id(user.id)
 
     async def get_permissions_by_user(self, user) -> list:
         """
         Lấy danh sách tên quyền của người dùng.
         """
-        async with AsyncSessionLocal() as session:
-            result = await session.execute(
-                select(UserPermission).where(UserPermission.user_id == user.id)
-            )
-            permissions = result.scalars().all()
-        result_list = [up.permission.name for up in permissions]
-        return result_list
+        user_permissions = await self.repository.find_by_user_id(user.id)
+        return [up.permission.name for up in user_permissions]
 
     async def update_permission(self, data: dict) -> list:
         """
@@ -116,44 +101,31 @@ class UserPermissionService:
               'is_active', 'is_denied', 'target'
         """
         user = await self.user_service.get_user_by_id(data.get("user_id"))
-        if not user:
-            raise AppException("E1004")  # Người dùng không tồn tại
+        # if not user:
+        #     raise AppException("E1004")  # Người dùng không tồn tại
 
         updated_permissions = []
 
-        async with AsyncSessionLocal() as session:
-            for permission_key, permission_data in data.get("permissions", {}).items():
-                permission = await self.permission_service.get_permission_by_name(permission_key)
-                if not permission:
-                    continue  # Nếu quyền không tồn tại, bỏ qua
+        for permission_key, permission_data in data.get("permissions", {}).items():
+            permission = await self.permission_service.get_permission_by_name(permission_key)
+            if not permission:
+                continue  # Nếu quyền không tồn tại, bỏ qua
 
-                # Tìm bản ghi UserPermission hiện tại
-                result = await session.execute(
-                    select(UserPermission).where(
-                        UserPermission.user_id == user.id,
-                        UserPermission.permission_id == permission.id
-                    )
-                )
-                user_permission = result.scalar_one_or_none()
-                if not user_permission:
-                    raise AppException("E2023")  # Quyền không tồn tại cho người dùng
+            user_permission = await self.repository.find_one_by_user_and_permission(user.id, permission.id)
+            # if not user_permission:
+            #     raise AppException("E2023")  # Quyền không tồn tại cho người dùng
 
-                user_permission.is_active = permission_data.get("is_active", user_permission.is_active)
-                user_permission.is_denied = permission_data.get("is_denied", user_permission.is_denied)
-                if "target" in permission_data:
-                    if permission_data["target"] == "all":
-                        user_permission.target_id = None
-                    else:
-                        user_permission.target_id = permission_data["target"]
-                else:
-                    raise AppException("E1004")
-                session.add(user_permission)
-                updated_permissions.append({
-                    "permission": permission_key,
-                    "status": "updated"
-                })
+            user_permission.is_active = permission_data.get("is_active", user_permission.is_active)
+            user_permission.is_denied = permission_data.get("is_denied", user_permission.is_denied)
+            # if "target" not in permission_data:
+            #     raise AppException("E1004")
+            user_permission.target_id = None if permission_data["target"] == "all" else permission_data["target"]
 
-            await session.commit()
+            await self.repository.update(user_permission)
+            updated_permissions.append({
+                "permission": permission_key,
+                "status": "updated"
+            })
 
         return updated_permissions
 
@@ -183,22 +155,17 @@ class UserPermissionService:
           - permissions: list các permission name cần xóa.
         """
         user = await self.user_service.get_user_by_id(data.get("user_id"))
-        if not user:
-            raise AppException("E1004")  # Người dùng không tồn tại
+        # if not user:
+        #     raise AppException("E1004")  # Người dùng không tồn tại
 
-        async with AsyncSessionLocal() as session:
-            for permission_name in data.get("permissions", []):
-                permission = await self.permission_service.get_permission_by_name(permission_name)
-                if not permission:
-                    continue  # Bỏ qua nếu quyền không tồn tại
+        user_permissions_to_delete = []
+        for permission_name in data.get("permissions", []):
+            permission = await self.permission_service.get_permission_by_name(permission_name)
+            if not permission:
+                continue  # Bỏ qua nếu quyền không tồn tại
 
-                result = await session.execute(
-                    select(UserPermission).where(
-                        UserPermission.user_id == user.id,
-                        UserPermission.permission_id == permission.id
-                    )
-                )
-                user_permission = result.scalar_one_or_none()
-                if user_permission:
-                    await session.delete(user_permission)
-            await session.commit()
+            user_permission = await self.repository.find_one_by_user_and_permission(user.id, permission.id)
+            if user_permission:
+                user_permissions_to_delete.append(user_permission)
+
+        await self.repository.bulk_delete(user_permissions_to_delete)

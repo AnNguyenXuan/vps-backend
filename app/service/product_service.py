@@ -1,27 +1,25 @@
 import json
 from fastapi import HTTPException, status
 from app.repository.product_repository import ProductRepository
-from app.model.product import Product, ProductOption
-from app.exception import AppException
-from app.configuration.database import AsyncSessionLocal
+from app.repository.category_repository import CategoryRepository
+from app.model.product import Product
+from app.model.product_option import ProductOption
+from .product_attribute_service import ProductAttributeService
+from .product_attribute_value_service import ProductAttributeValueService
+from .product_option_service import ProductOptionService
+from .product_option_value_service import ProductOptionValueService
+# from app.exception import AppException
+
 
 
 class ProductService:
-    def __init__(
-        self,
-        product_repository: ProductRepository,
-        category_repository,
-        product_attribute_service,
-        product_attribute_value_service,
-        product_option_service,
-        product_option_value_service
-    ):
-        self.product_repository = product_repository
-        self.category_repository = category_repository
-        self.product_attribute_service = product_attribute_service
-        self.product_attribute_value_service = product_attribute_value_service
-        self.product_option_service = product_option_service
-        self.product_option_value_service = product_option_value_service
+    def __init__(self):
+        self.product_repository = ProductRepository()
+        self.category_repository = CategoryRepository()
+        self.product_attribute_service = ProductAttributeService()
+        self.product_attribute_value_service = ProductAttributeValueService()
+        self.product_option_service = ProductOptionService()
+        self.product_option_value_service = ProductOptionValueService()
 
     async def to_dto(self, product: Product) -> dict:
         """Chuyển đối tượng Product thành dict (DTO)"""
@@ -73,8 +71,8 @@ class ProductService:
     async def get_product_by_id(self, product_id: int) -> Product:
         """Tìm sản phẩm theo ID và kiểm tra xem sản phẩm có bị đánh dấu xóa không"""
         product = await self.product_repository.find_by_id(product_id)
-        if not product or product.is_delete:
-            raise AppException("Product not found")
+        # if not product or product.is_delete:
+        #     raise AppException("Product not found")
         return product
 
     async def get_product_attributes(self, product: Product) -> dict:
@@ -88,10 +86,10 @@ class ProductService:
 
     async def create_product(self, data: dict) -> dict:
         """Tạo sản phẩm mới"""
-        if "name" not in data:
-            raise AppException("Name is required")
-        if "location_address" not in data:
-            raise AppException("Location address is required")
+        # if "name" not in data:
+        #     raise AppException("Name is required")
+        # if "location_address" not in data:
+        #     raise AppException("Location address is required")
         
         product = Product(
             name=data["name"],
@@ -102,15 +100,12 @@ class ProductService:
 
         if "category_id" in data and data["category_id"]:
             category = await self.category_repository.find_by_id(data["category_id"])
-            if not category:
-                raise AppException("Invalid category ID")
+            # if not category:
+            #     raise AppException("Invalid category ID")
             product.category = category
 
-        # Tạo sản phẩm trong DB
-        async with AsyncSessionLocal() as session:
-            session.add(product)
-            await session.commit()
-            await session.refresh(product)
+        # Tạo sản phẩm trong DB thông qua repository
+        product = await self.product_repository.create(product)
 
         # Xử lý attributes nếu có
         if "attribute" in data and isinstance(data["attribute"], dict):
@@ -146,14 +141,12 @@ class ProductService:
 
         if "category_id" in data and data["category_id"]:
             category = await self.category_repository.find_by_id(data["category_id"])
-            if not category:
-                raise AppException("Invalid category ID")
+            # if not category:
+            #     raise AppException("Invalid category ID")
             product.category = category
 
-        async with AsyncSessionLocal() as session:
-            session.add(product)
-            await session.commit()
-            await session.refresh(product)
+        # Cập nhật thông tin sản phẩm trong DB thông qua repository
+        product = await self.product_repository.update(product)
 
         # Xử lý attributes nếu có
         if "attribute" in data and isinstance(data["attribute"], dict):
@@ -162,30 +155,24 @@ class ProductService:
                 if not product_attribute:
                     product_attribute = await self.product_attribute_service.create_product_attribute(product, attr_name)
                 current_values = await self.product_attribute_value_service.find_by_attribute(product_attribute)
-                # Xóa các giá trị không còn tồn tại
+                # Xóa các giá trị hiện có không có trong danh sách mới
                 for current_value in current_values:
                     if current_value.value not in values:
-                        async with AsyncSessionLocal() as session:
-                            await session.delete(current_value)
-                            await session.commit()
+                        # Giả sử product_attribute_value_service có hàm delete để xử lý việc xóa
+                        await self.product_attribute_value_service.delete_product_attribute_value(current_value)
                 # Thêm giá trị mới nếu chưa có
                 for value in values:
                     existing_value = await self.product_attribute_value_service.find_by_value_and_attribute(value, product_attribute)
                     if not existing_value:
                         await self.product_attribute_value_service.create_product_attribute_value(product_attribute, value)
 
-        async with AsyncSessionLocal() as session:
-            await session.commit()
-        
         return await self.to_dto(product)
 
     async def delete_product(self, product_id: int) -> None:
-        """Đánh dấu sản phẩm là đã xóa"""
+        """Đánh dấu sản phẩm là đã xóa (soft-delete)"""
         product = await self.get_product_by_id(product_id)
         product.is_delete = True
-        async with AsyncSessionLocal() as session:
-            session.add(product)
-            await session.commit()
+        await self.product_repository.update(product)
 
     async def get_product_price_and_stock(self, product: Product) -> dict:
         """Tính toán giá thấp nhất và tổng số tồn kho từ các tùy chọn sản phẩm"""
@@ -230,8 +217,8 @@ class ProductService:
     async def update_or_create_product_attributes_and_options(self, product_id: int, json_data: dict) -> None:
         """Cập nhật hoặc tạo mới các thuộc tính và tùy chọn cho sản phẩm"""
         product = await self.get_product_by_id(product_id)
-        if not product:
-            raise AppException("Product not found")
+        # if not product:
+        #     raise AppException("Product not found")
 
         attributes = json_data.get("attribute", [])
         values = json_data.get("value", [])

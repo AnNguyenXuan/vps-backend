@@ -5,6 +5,24 @@ from app.configuration.database import AsyncSessionLocal
 
 
 class GroupMemberRepository:
+    async def add(self, group_member: GroupMember) -> GroupMember:
+        """
+        Thêm một GroupMember mới vào cơ sở dữ liệu.
+        """
+        async with AsyncSessionLocal() as session:
+            session.add(group_member)
+            await session.commit()
+            await session.refresh(group_member)
+        return group_member
+
+    async def delete(self, group_member: GroupMember) -> None:
+        """
+        Xóa một GroupMember khỏi cơ sở dữ liệu.
+        """
+        async with AsyncSessionLocal() as session:
+            await session.delete(group_member)
+            await session.commit()
+
     async def find_by_user_and_group(self, user, group) -> GroupMember:
         """
         Tìm kiếm một GroupMember dựa vào User và Group.
@@ -27,7 +45,6 @@ class GroupMemberRepository:
             result = await session.execute(
                 select(GroupMember)
                 .where(GroupMember.user_id == user.id)
-                # Nếu cần load luôn đối tượng Group, có thể sử dụng eager loading (ví dụ: selectinload)
             )
             return result.scalars().all()
 

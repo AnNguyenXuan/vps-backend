@@ -1,15 +1,14 @@
+# repository/group_permission_repository.py
 from sqlalchemy.future import select
-from sqlalchemy import asc, func
+from sqlalchemy import asc
 from app.model.group_permission import GroupPermission
 from app.configuration.database import AsyncSessionLocal
-
 
 class GroupPermissionRepository:
     async def find_group_permission(self, group_id: int, permission_name: str) -> list:
         """
-        Lấy danh sách quyền theo groupId và permissionName, ưu tiên bản ghi target_id = None
-        (giả sử quan hệ giữa GroupPermission và Permission được định nghĩa qua thuộc tính `permission`
-         và trường name của Permission là `name`).
+        Lấy danh sách GroupPermission theo group_id và permission_name,
+        ưu tiên bản ghi có target_id = None (sắp xếp tăng dần theo target_id).
         """
         async with AsyncSessionLocal() as session:
             result = await session.execute(
@@ -43,3 +42,30 @@ class GroupPermissionRepository:
                 )
             )
             return result.scalar_one_or_none()
+
+    async def bulk_insert(self, group_permissions: list) -> None:
+        """
+        Thêm nhiều bản ghi GroupPermission trong cùng một phiên giao dịch.
+        """
+        async with AsyncSessionLocal() as session:
+            session.add_all(group_permissions)
+            await session.commit()
+
+    async def bulk_update(self, group_permissions: list) -> None:
+        """
+        Cập nhật nhiều bản ghi GroupPermission trong cùng một phiên giao dịch.
+        (Ở đây, các đối tượng đã được thay đổi thuộc tính; chỉ cần add lại và commit.)
+        """
+        async with AsyncSessionLocal() as session:
+            for gp in group_permissions:
+                session.add(gp)
+            await session.commit()
+
+    async def bulk_delete(self, group_permissions: list) -> None:
+        """
+        Xóa nhiều bản ghi GroupPermission trong cùng một phiên giao dịch.
+        """
+        async with AsyncSessionLocal() as session:
+            for gp in group_permissions:
+                await session.delete(gp)
+            await session.commit()

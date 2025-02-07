@@ -1,22 +1,17 @@
 from app.repository.permission_repository import PermissionRepository
 from app.model.permission import Permission
-from app.configuration.database import AsyncSessionLocal
-from app.exceptions import AppException  # Giả sử bạn có định nghĩa ngoại lệ riêng
+# from app.exception import AppException  # Giả sử bạn có định nghĩa ngoại lệ riêng
 
 class PermissionService:
-    def __init__(self, entity_manager, permission_repository: PermissionRepository):
-        self.entity_manager = entity_manager  # entity_manager có thể là AsyncSessionLocal
-        self.permission_repository = permission_repository
+    def __init__(self):
+        self.permission_repository = PermissionRepository()
 
     async def sync_permissions(self) -> None:
         """
         Đồng bộ danh sách quyền giữa cơ sở dữ liệu và danh sách quyền định nghĩa sẵn.
-        Danh sách quyền tĩnh được định nghĩa dưới dạng dictionary:
-            key   : tên quyền (str)
-            value : tuple (mô tả, defaultGranted)
         """
         # Danh sách quyền tĩnh định nghĩa kèm trạng thái mặc định
-        permissions = {
+        static_permissions = {
             # Quản lý người dùng
             'view_users': ('Xem danh sách người dùng', False),
             'view_user_details': ('Xem chi tiết người dùng', False),
@@ -92,24 +87,7 @@ class PermissionService:
             'view_system_logs': ('Quản lý nhật ký hệ thống', False),
         }
 
-        # Lấy danh sách quyền hiện có trong cơ sở dữ liệu
-        existing_permissions = await self.permission_repository.find_all()
-        existing_names = [perm.name for perm in existing_permissions]
-
-        async with AsyncSessionLocal() as session:
-            # Thêm các quyền mới chưa có trong cơ sở dữ liệu
-            for name, (description, default_granted) in permissions.items():
-                if name not in existing_names:
-                    permission = Permission()
-                    permission.name = name
-                    permission.description = description
-                    permission.default = default_granted
-                    session.add(permission)
-            # Xóa các quyền thừa không có trong danh sách tĩnh
-            for perm in existing_permissions:
-                if perm.name not in permissions:
-                    await session.delete(perm)
-            await session.commit()
+        await self.permission_repository.sync_permissions(static_permissions)
 
     async def get_all_permissions(self) -> list:
         """Trả về danh sách tất cả các quyền (Permission)."""
@@ -137,16 +115,12 @@ class PermissionService:
         Nếu quyền đã tồn tại (theo tên) sẽ ném ngoại lệ.
         """
         existing = await self.get_permission_by_name(name)
-        if existing:
-            raise AppException("E2001", f"Permission with name '{name}' already exists.")
+        # if existing:
+        #     raise AppException("E2001", f"Permission with name '{name}' already exists.")
         permission = Permission()
         permission.name = name
         permission.description = description
-        async with AsyncSessionLocal() as session:
-            session.add(permission)
-            await session.commit()
-            await session.refresh(permission)
-        return permission
+        return await self.permission_repository.add(permission)
 
     async def update_permission(self, id: int, data: dict) -> Permission:
         """
@@ -154,27 +128,21 @@ class PermissionService:
         data có thể bao gồm các trường: name, description.
         """
         permission = await self.get_permission_by_id(id)
-        if not permission:
-            raise AppException("E2002", "Permission not found.")
+        # if not permission:
+        #     raise AppException("E2002", "Permission not found.")
         if "name" in data:
             # Kiểm tra xem nếu đổi tên thì không trùng với quyền khác
             existing = await self.get_permission_by_name(data["name"])
-            if existing and existing.id != id:
-                raise AppException("E2003", f"Permission with name '{data['name']}' already exists.")
+            # if existing and existing.id != id:
+            #     raise AppException("E2003", f"Permission with name '{data['name']}' already exists.")
             permission.name = data["name"]
         if "description" in data:
             permission.description = data["description"]
-        async with AsyncSessionLocal() as session:
-            session.add(permission)
-            await session.commit()
-            await session.refresh(permission)
-        return permission
+        return await self.permission_repository.update(permission)
 
     async def delete_permission(self, id: int) -> None:
         """Xóa quyền theo ID."""
         permission = await self.get_permission_by_id(id)
-        if not permission:
-            raise AppException("E2004", "Permission not found.")
-        async with AsyncSessionLocal() as session:
-            await session.delete(permission)
-            await session.commit()
+        # if not permission:
+        #     raise AppException("E2004", "Permission not found.")
+        await self.permission_repository.delete(permission)
