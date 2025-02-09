@@ -1,3 +1,5 @@
+# main.py
+
 from fastapi import FastAPI
 from app.configuration.database import engine, Base
 from app.controller.category_controller  import router as category_router
@@ -10,7 +12,9 @@ from app.controller.user_controller import router as user_router
 from app.controller.user_permission_controller import router as user_permission_router
 
 from contextlib import asynccontextmanager
+from app.configuration.security import JWTMiddleware  # Import middleware
 
+# Import các model để tạo bảng
 from app.model.user import User
 from app.model.product import Product
 from app.model.group import Group
@@ -22,16 +26,16 @@ from app.model.user_permission import UserPermission
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Code trước khi ứng dụng khởi động (startup)
+    # Startup: tạo bảng nếu chưa tồn tại
     async with engine.begin() as conn:
-        # Tạo bảng nếu chưa tồn tại
         await conn.run_sync(Base.metadata.create_all)
     yield
-    # Code sau khi ứng dụng tắt (shutdown)
-    # Nếu cần làm sạch hoặc đóng kết nối DB, bạn có thể làm ở đây
+    # Shutdown: xử lý đóng kết nối, nếu cần
 
-# Khởi tạo FastAPI và đăng ký Lifespan event handler
 app = FastAPI(lifespan=lifespan)
+
+# Thêm JWT Middleware để gán user id vào ContextVar cho mỗi request
+app.add_middleware(JWTMiddleware)
 
 # Đăng ký các router
 app.include_router(category_router)

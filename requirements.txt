@@ -4,3 +4,4 @@ asyncpg
 bcrypt
 passlib
 
+python-jose[cryptography]
