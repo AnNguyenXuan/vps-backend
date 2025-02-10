@@ -1,24 +1,19 @@
 import os
+from fastapi import HTTPException
 from datetime import datetime, timedelta
-import os
 from jose import jwt, JWTError
-from dotenv import load_dotenv
+from app.model.user import User
 from .user_service import UserService
 from .blacklist_token_service import BlacklistTokenService
 from .refresh_token_service import RefreshTokenService
-from app.core.config import SECRET_KEY, ALGORITHM, JWT_ISSUER, JWT_AUDIENCE
+from app.core.config import SECRET_KEY, ALGORITHM, JWT_ISSUER, JWT_AUDIENCE, ACCESS_TOKEN_EXPIRE, REFRESH_TOKEN_EXPIRE
 
-load_dotenv()
 
 class AuthenticationService:
     def __init__(self):
         self.user_service = UserService()
         self.blacklist_token_service = BlacklistTokenService()
         self.refresh_token_service = RefreshTokenService()
-
-        # Đọc issuer và audience từ .env (hoặc sử dụng giá trị mặc định)
-        self.issuer = JWT_ISSUER
-        self.audience = JWT_AUDIENCE
 
     async def create_token(self, user, token_type: str, refresh_token_id: str | None = None, reuse_count: int = 0) -> str:
         """
@@ -29,11 +24,11 @@ class AuthenticationService:
         """
         now = datetime.utcnow()
         if token_type == "access":
-            ttl = 3600  # 1 giờ
+            ttl = ACCESS_TOKEN_EXPIRE
             if not refresh_token_id:
                 raise ValueError("Refresh Token ID is required for access tokens.")
         elif token_type == "refresh":
-            ttl = 5184000  # 2 tháng
+            ttl = REFRESH_TOKEN_EXPIRE
         else:
             raise ValueError('Invalid token type. Allowed values are "access" and "refresh".')
 
@@ -41,8 +36,8 @@ class AuthenticationService:
         jti = os.urandom(32).hex()  # Tạo id duy nhất cho token
 
         payload = {
-            "iss": self.issuer,
-            "aud": self.audience,
+            "iss": JWT_ISSUER,
+            "aud": JWT_AUDIENCE,
             "iat": now,
             "exp": exp,
             "jti": jti,
@@ -76,13 +71,21 @@ class AuthenticationService:
                 token,
                 SECRET_KEY,
                 algorithms=[ALGORITHM],
-                audience=self.audience,
-                issuer=self.issuer,
+                audience=JWT_AUDIENCE,
+                issuer=JWT_ISSUER,
             )
         except JWTError as e:
-            raise Exception("Invalid or expired token") from e
+            raise HTTPException(status_code=401, detail="Invalid token")
 
         return payload
+
+    async def get_current_user(self, token: str) -> User:
+        payload = self.validate_token(token)
+        if "uid" in payload:
+            user_id = payload["uid"]
+            return await self.user_service.get_user_by_id(user_id)
+        else:
+            raise HTTPException(status_code=401, detail="Invalid token")
 
     async def refresh_access_token(self, refresh_token_string: str) -> str:
         """
