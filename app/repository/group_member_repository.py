@@ -1,7 +1,7 @@
 from sqlalchemy.future import select
 from sqlalchemy import func
 from app.model.group_member import GroupMember
-from app.configuration.database import AsyncSessionLocal
+from app.core.database import AsyncSessionLocal
 
 
 class GroupMemberRepository:

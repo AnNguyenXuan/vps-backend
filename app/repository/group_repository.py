@@ -1,6 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
-from app.configuration.database import AsyncSessionLocal
+from app.core.database import AsyncSessionLocal
 from app.model.group import Group
 
 class GroupRepository:

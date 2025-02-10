@@ -1,30 +1,24 @@
-# app/service/authentication_service.py
-
 import os
-import asyncio
 from datetime import datetime, timedelta
 import os
 from jose import jwt, JWTError
 from dotenv import load_dotenv
-
-from app.configuration.security import SECRET_KEY, ALGORITHM
+from .user_service import UserService
+from .blacklist_token_service import BlacklistTokenService
+from .refresh_token_service import RefreshTokenService
+from app.core.config import SECRET_KEY, ALGORITHM, JWT_ISSUER, JWT_AUDIENCE
 
 load_dotenv()
 
 class AuthenticationService:
-    def __init__(
-        self,
-        user_service,             # Ví dụ: instance của UserService
-        blacklist_token_service,  # Instance của BlacklistTokenService
-        refresh_token_service     # Instance của RefreshTokenService
-    ):
-        self.user_service = user_service
-        self.blacklist_token_service = blacklist_token_service
-        self.refresh_token_service = refresh_token_service
+    def __init__(self):
+        self.user_service = UserService()
+        self.blacklist_token_service = BlacklistTokenService()
+        self.refresh_token_service = RefreshTokenService()
 
         # Đọc issuer và audience từ .env (hoặc sử dụng giá trị mặc định)
-        self.issuer = os.getenv("JWT_ISSUER", "https://scime.click")
-        self.audience = os.getenv("JWT_AUDIENCE", "https://shop.scime.click")
+        self.issuer = JWT_ISSUER
+        self.audience = JWT_AUDIENCE
 
     async def create_token(self, user, token_type: str, refresh_token_id: str | None = None, reuse_count: int = 0) -> str:
         """

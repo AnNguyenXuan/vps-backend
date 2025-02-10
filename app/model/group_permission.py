@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, ForeignKey, Boolean
-from app.configuration.database import Base
+from app.core.database import Base
 
 class GroupPermission(Base):
     __tablename__ = "group_permissions"

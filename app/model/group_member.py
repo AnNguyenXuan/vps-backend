@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, ForeignKey, UniqueConstraint
-from app.configuration.database import Base
+from app.core.database import Base
 
 class GroupMember(Base):
     __tablename__ = "group_members"

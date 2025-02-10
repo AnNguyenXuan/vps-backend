@@ -1,7 +1,7 @@
 # main.py
 
 from fastapi import FastAPI
-from app.configuration.database import engine, Base
+from app.core.database import engine, Base
 from app.controller.category_controller  import router as category_router
 from app.controller.group_controller import router as group_router
 from app.controller.group_member_controller import router as group_member_router
@@ -12,7 +12,7 @@ from app.controller.user_controller import router as user_router
 from app.controller.user_permission_controller import router as user_permission_router
 
 from contextlib import asynccontextmanager
-from app.configuration.security import JWTMiddleware  # Import middleware
+# from app.core.security import JWTMiddleware  # Import middleware
 
 # Import các model để tạo bảng
 from app.model.user import User
@@ -35,7 +35,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 # Thêm JWT Middleware để gán user id vào ContextVar cho mỗi request
-app.add_middleware(JWTMiddleware)
+# app.add_middleware(JWTMiddleware)
 
 # Đăng ký các router
 app.include_router(category_router)

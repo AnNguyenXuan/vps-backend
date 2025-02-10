@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, ForeignKey, Numeric
 from sqlalchemy.orm import relationship
-from app.configuration.database import Base
+from app.core.database import Base
 
 class ProductOption(Base):
     __tablename__ = "product_options"

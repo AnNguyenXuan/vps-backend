@@ -1,6 +1,6 @@
 from sqlalchemy.future import select
 from app.model.user import User
-from app.configuration.database import AsyncSessionLocal
+from app.core.database import AsyncSessionLocal
 from sqlalchemy.exc import SQLAlchemyError
 
 

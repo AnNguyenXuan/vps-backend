@@ -1,12 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
-import os
-from dotenv import load_dotenv
+from config import DATABASE_URL
 
-# Load biến môi trường từ .env
-load_dotenv()
-
-DATABASE_URL = os.getenv("DATABASE_URL")
 
 # Tạo engine kết nối với cơ sở dữ liệu
 engine = create_async_engine(DATABASE_URL, echo=True)

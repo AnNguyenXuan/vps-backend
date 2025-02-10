@@ -2,7 +2,7 @@
 from sqlalchemy.future import select
 from sqlalchemy import asc
 from app.model.group_permission import GroupPermission
-from app.configuration.database import AsyncSessionLocal
+from app.core.database import AsyncSessionLocal
 
 class GroupPermissionRepository:
     async def find_group_permission(self, group_id: int, permission_name: str) -> list:

@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, Text
-from app.configuration.database import Base
+from app.core.database import Base
 
 class Group(Base):
     __tablename__ = "groups"

@@ -1,7 +1,7 @@
 from sqlalchemy.future import select
 from sqlalchemy import asc
 from app.model.user_permission import UserPermission
-from app.configuration.database import AsyncSessionLocal
+from app.core.database import AsyncSessionLocal
 
 
 class UserPermissionRepository:

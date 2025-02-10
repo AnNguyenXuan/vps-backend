@@ -1,7 +1,7 @@
 from sqlalchemy.future import select
 from sqlalchemy import or_
 from app.model.product import Product
-from app.configuration.database import AsyncSessionLocal
+from app.core.database import AsyncSessionLocal
 
 
 class ProductRepository:

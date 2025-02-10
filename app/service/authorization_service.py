@@ -1,26 +1,15 @@
-# app/service/authorization_service.py
-
 from typing import Optional, Any, List
+from .user_permission_service import UserPermissionService
+from .group_member_service import GroupMemberService
+from .group_permission_service import GroupPermissionService
+from .permission_service import PermissionService
 
 class AuthorizationService:
-    def __init__(
-        self,
-        user_permission_service: Any,
-        group_member_service: Any,
-        group_permission_service: Any,
-        permission_service: Any
-    ):
-        """
-        Khởi tạo AuthorizationService với các service phụ thuộc:
-         - user_permission_service: Service kiểm tra quyền của người dùng.
-         - group_member_service: Service lấy danh sách nhóm mà người dùng thuộc về.
-         - group_permission_service: Service kiểm tra quyền của nhóm.
-         - permission_service: Service lấy thông tin quyền theo tên.
-        """
-        self.user_permission_service = user_permission_service
-        self.group_member_service = group_member_service
-        self.group_permission_service = group_permission_service
-        self.permission_service = permission_service
+    def __init__(self):
+        self.user_permission_service = UserPermissionService()
+        self.group_member_service = GroupMemberService()
+        self.group_permission_service = GroupPermissionService()
+        self.permission_service = PermissionService()
 
     def check_permission(
         self,

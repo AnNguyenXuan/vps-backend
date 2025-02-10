@@ -1,6 +1,6 @@
 from sqlalchemy.future import select
 from app.model.category import Category
-from app.configuration.database import AsyncSessionLocal
+from app.core.database import AsyncSessionLocal
 
 
 class CategoryRepository:
