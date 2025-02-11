@@ -4,7 +4,7 @@ from .config import DATABASE_URL
 
 
 # Tạo engine kết nối với cơ sở dữ liệu
-engine = create_async_engine(DATABASE_URL, echo=True)
+engine = create_async_engine(DATABASE_URL) # thêm echo = True để bật logging SQL
 
 # Tạo session factory
 AsyncSessionLocal = sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)

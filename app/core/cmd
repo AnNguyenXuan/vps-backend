@@ -2,39 +2,81 @@ import sys
 import os
 import asyncio
 import argparse
+import getpass
+
 sys.path[0] = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-from app.core.database import engine, Base, AsyncSessionLocal
+from app.core.database import engine, Base
 from app.service.user_service import UserService
+from app.service.permission_service import PermissionService
 
 # Import các model để tạo bảng
 from app.model import all_models
 
+user_service = UserService()
+permission_service = PermissionService()
 
 # Hàm khởi tạo database
 async def init_db():
     """Khởi tạo database (tạo bảng nếu chưa có)."""
     async with engine.begin() as conn:
-        await conn.run_sync(lambda conn: Base.metadata.create_all(bind=conn, tables=[model.__table__ for model in all_models]))
+        await conn.run_sync(
+            lambda conn: Base.metadata.create_all(
+                bind=conn, tables=[model.__table__ for model in all_models]
+            )
+        )
     print("✅ Database đã được khởi tạo.")
 
-# Hàm tạo user admin
-async def create_admin():
-    """Tạo user admin mặc định."""
-    async with AsyncSessionLocal() as session:
-        user_service = UserService(session)
-        admin_user = await user_service.create_admin()
-        print(f"✅ Admin user '{admin_user.email}' đã được tạo.")
+def prompt_password():
+    """Hàm yêu cầu nhập mật khẩu và xác nhận mật khẩu."""
+    while True:
+        pwd1 = getpass.getpass("Nhập mật khẩu: ")
+        pwd2 = getpass.getpass("Nhập lại mật khẩu: ")
+        if pwd1 == pwd2:
+            return pwd1
+        else:
+            print("Mật khẩu không khớp. Vui lòng thử lại.")
+
+# Hàm tạo superadmin
+async def create_superadmin():
+    """Tạo superadmin với mật khẩu được nhập từ bàn phím."""
+    # Chạy hàm prompt_password trong một thread riêng để không chặn event loop
+    password = await asyncio.to_thread(prompt_password)
+    if await user_service.create_superadmin(password):
+        print("✅ superadmin đã được tạo.")
+    else:
+        print("❌ superadmin đã tồn tại, Không cần tạo mới")
+
+# Hàm thay đổi mật khẩu superadmin
+async def change_superadmin_password():
+    """Thay đổi mật khẩu của superadmin với mật khẩu được nhập từ bàn phím."""
+    new_password = await asyncio.to_thread(prompt_password)
+    if await user_service.change_superadmin_password(new_password):
+        print("✅ thay đổi mật khẩu thành công.")
+    else:
+        print("❌ thay đổi mật khẩu không thành công")
+
+# Hàm đồng bộ quyền tĩnh vào cơ sở dữ liệu
+async def sync_permissions():
+    """Đồng bộ quyền tĩnh vào cơ sở dữ liệu."""
+    await permission_service.sync_permissions()
+    print("✅ Đồng bộ quyền thành công.")
 
 # Xử lý argparse
 def main():
-    parser = argparse.ArgumentParser(description="Quản lý database và user admin.")
+    parser = argparse.ArgumentParser(description="Quản lý database, superadmin và quyền.")
     subparsers = parser.add_subparsers(dest="command")
 
     # Lệnh khởi tạo database
     subparsers.add_parser("init_db", help="Khởi tạo database (tạo bảng nếu chưa có).")
 
-    # Lệnh tạo user admin
-    subparsers.add_parser("create_admin", help="Tạo user admin mặc định.")
+    # Lệnh tạo superadmin
+    subparsers.add_parser("create_admin", help="Tạo superadmin mặc định.")
+
+    # Lệnh thay đổi mật khẩu superadmin
+    subparsers.add_parser("change_password", help="Thay đổi mật khẩu superadmin.")
+
+    # Lệnh đồng bộ quyền
+    subparsers.add_parser("sync_permissions", help="Đồng bộ quyền từ danh sách tĩnh vào database.")
 
     args = parser.parse_args()
 
@@ -42,9 +84,21 @@ def main():
     if args.command == "init_db":
         asyncio.run(init_db())
     elif args.command == "create_admin":
-        asyncio.run(create_admin())
+        asyncio.run(create_superadmin())
+    elif args.command == "change_password":
+        asyncio.run(change_superadmin_password())
+    elif args.command == "sync_permissions":
+        asyncio.run(sync_permissions())
     else:
         parser.print_help()
 
+async def test():
+    try:
+        await user_service.verify_user_password("superadmin", "123456")
+        print("mật khẩu đúng")
+    except:
+        print("mật khẩu sai")
+
 if __name__ == "__main__":
     main()
+    # asyncio.run(test())

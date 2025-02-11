@@ -1,6 +1,6 @@
+from fastapi import HTTPException
 from app.repository.permission_repository import PermissionRepository
 from app.model.permission import Permission
-# from app.exception import AppException  # Giả sử bạn có định nghĩa ngoại lệ riêng
 
 class PermissionService:
     def __init__(self):
@@ -9,6 +9,7 @@ class PermissionService:
     async def sync_permissions(self) -> None:
         """
         Đồng bộ danh sách quyền giữa cơ sở dữ liệu và danh sách quyền định nghĩa sẵn.
+        Nếu quyền chưa tồn tại trong DB thì tạo mới, nếu đã có thì cập nhật theo quyền tĩnh.
         """
         # Danh sách quyền tĩnh định nghĩa kèm trạng thái mặc định
         static_permissions = {
@@ -87,7 +88,30 @@ class PermissionService:
             'view_system_logs': ('Quản lý nhật ký hệ thống', False),
         }
 
-        await self.permission_repository.sync_permissions(static_permissions)
+        # Lấy danh sách quyền hiện có trong DB, chuyển thành dict mapping: name -> Permission
+        existing_permissions_list = await self.permission_repository.find_all()
+        existing_permissions = {perm.name: perm for perm in existing_permissions_list}
+
+        # Đồng bộ: thêm mới hoặc cập nhật quyền
+        for name, (description, default_granted) in static_permissions.items():
+            if name in existing_permissions:
+                # Cập nhật quyền theo quyền tĩnh
+                permission = existing_permissions[name]
+                permission.description = description
+                permission.default = default_granted
+                await self.permission_repository.update(permission)
+            else:
+                # Tạo quyền mới nếu chưa tồn tại
+                new_permission = Permission()
+                new_permission.name = name
+                new_permission.description = description
+                new_permission.default = default_granted
+                await self.permission_repository.add(new_permission)
+
+        # # (Tùy chọn) Xóa các quyền trong DB mà không có trong static_permissions:
+        # for perm in existing_permissions_list:
+        #     if perm.name not in static_permissions:
+        #         await self.permission_repository.delete(perm)
 
     async def get_all_permissions(self) -> list:
         """Trả về danh sách tất cả các quyền (Permission)."""
@@ -115,8 +139,9 @@ class PermissionService:
         Nếu quyền đã tồn tại (theo tên) sẽ ném ngoại lệ.
         """
         existing = await self.get_permission_by_name(name)
-        # if existing:
-        #     raise AppException("E2001", f"Permission with name '{name}' already exists.")
+        if existing:
+            raise HTTPException(403, f"Permission with name '{name}' already exists.")
+
         permission = Permission()
         permission.name = name
         permission.description = description
@@ -128,13 +153,14 @@ class PermissionService:
         data có thể bao gồm các trường: name, description.
         """
         permission = await self.get_permission_by_id(id)
-        # if not permission:
-        #     raise AppException("E2002", "Permission not found.")
+        if not permission:
+            raise HTTPException(403, "Permission not found.")
+
         if "name" in data:
             # Kiểm tra xem nếu đổi tên thì không trùng với quyền khác
             existing = await self.get_permission_by_name(data["name"])
-            # if existing and existing.id != id:
-            #     raise AppException("E2003", f"Permission with name '{data['name']}' already exists.")
+            if existing and existing.id != id:
+                raise HTTPException(403, f"Permission with name '{data['name']}' already exists.")
             permission.name = data["name"]
         if "description" in data:
             permission.description = data["description"]
@@ -143,6 +169,6 @@ class PermissionService:
     async def delete_permission(self, id: int) -> None:
         """Xóa quyền theo ID."""
         permission = await self.get_permission_by_id(id)
-        # if not permission:
-        #     raise AppException("E2004", "Permission not found.")
+        if not permission:
+            raise HTTPException(403, "Permission not found.")
         await self.permission_repository.delete(permission)

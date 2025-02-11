@@ -7,8 +7,8 @@ class User(Base):
 
     id = Column(BigInteger, primary_key=True, index=True, autoincrement=True)
     username = Column(String(20), nullable=False, unique=True, index=True)
-    email = Column(String(255), nullable=False, unique=True, index=True)
     password = Column(String(255), nullable=False)
+    email = Column(String(255), nullable=True, unique=True, index=True)
     phone = Column(String(15), nullable=True)
     address = Column(String(255), nullable=True)
     is_active = Column(Boolean, default=True)

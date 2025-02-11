@@ -13,10 +13,6 @@ class UserService:
     def __init__(self):
         self.repository = UserRepository()
 
-    async def get_all_active_users(self):
-        """ Lấy tất cả người dùng đang hoạt động """
-        return await self.repository.get_active_users_paginated(page=1, limit=1000)
-
     async def get_active_users_paginated(self, page: int, limit: int):
         """ Lấy danh sách người dùng đang hoạt động theo phân trang """
         return await self.repository.get_active_users_paginated(page, limit)
@@ -42,9 +38,31 @@ class UserService:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
         return user
 
+    async def create_superadmin(self, password: str):
+        """ Tạo superadmin """
+        hashed_password = pwd_context.hash(password)
+        new_user = User(username="superadmin", password=hashed_password)
+        try:
+            await self.repository.create_user(new_user)
+            return True
+        except:
+            return False
+
+    async def change_superadmin_password(self, new_password: str):
+        """ Thay đổi mật khẩu superadmin """
+        try:
+            user = await self.get_user_by_username("superadmin")
+            user.password = pwd_context.hash(new_password)
+            await self.repository.update_user(user)
+            return True
+        except:
+            return False
+
     async def create_user(self, user_data: UserCreate):
         """ Tạo người dùng mới """
         hashed_password = pwd_context.hash(user_data.password)
+        if user_data.username == "superadmin" or user_data.username == "admin":
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot create user with username: superadmin, admin")
         new_user = User(
             username=user_data.username,
             email=user_data.email,
@@ -60,6 +78,8 @@ class UserService:
         user = await self.get_user_by_id(user_id)
 
         if user_data.username:
+            if user_data.username == "superadmin" or user_data.username == "admin":
+                raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot update username: superadmin, admin")
             user.username = user_data.username
         if user_data.email:
             user.email = user_data.email

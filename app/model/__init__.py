@@ -8,6 +8,7 @@ from .group_permission import GroupPermission
 from .user_permission import UserPermission
 from .blacklist_token import BlacklistToken
 from .refresh_token import RefreshToken
+from .product_option import ProductOption
 
 # Danh sách tất cả model (dùng để import gọn)
 all_models = [
@@ -20,5 +21,6 @@ all_models = [
     GroupPermission,
     UserPermission,
     BlacklistToken,
-    RefreshToken
+    RefreshToken,
+    ProductOption
 ]

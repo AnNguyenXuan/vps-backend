@@ -1,7 +1,10 @@
 fastapi[all]
+uvicorn[standard]
+
 sqlalchemy[asyncio]
 asyncpg
-bcrypt
+
+bcrypt==4.0.1  # Tránh lỗi với passlib
 passlib
 
 python-jose[cryptography]
