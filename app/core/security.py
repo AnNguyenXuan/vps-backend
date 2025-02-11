@@ -3,9 +3,11 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from contextvars import ContextVar
 from app.model.user import User
 from app.service.authentication_service import AuthenticationService
+from app.service.authorization_service import AuthorizationService
 
 
 authentication = AuthenticationService()
+authorization = AuthorizationService()
 
 # ContextVar lưu trữ user (hoặc None nếu không có)
 current_user: ContextVar[User | None] = ContextVar("current_user", default=None)

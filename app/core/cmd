@@ -1,0 +1,50 @@
+import sys
+import os
+import asyncio
+import argparse
+sys.path[0] = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+from app.core.database import engine, Base, AsyncSessionLocal
+from app.service.user_service import UserService
+
+# Import các model để tạo bảng
+from app.model import all_models
+
+
+# Hàm khởi tạo database
+async def init_db():
+    """Khởi tạo database (tạo bảng nếu chưa có)."""
+    async with engine.begin() as conn:
+        await conn.run_sync(lambda conn: Base.metadata.create_all(bind=conn, tables=[model.__table__ for model in all_models]))
+    print("✅ Database đã được khởi tạo.")
+
+# Hàm tạo user admin
+async def create_admin():
+    """Tạo user admin mặc định."""
+    async with AsyncSessionLocal() as session:
+        user_service = UserService(session)
+        admin_user = await user_service.create_admin()
+        print(f"✅ Admin user '{admin_user.email}' đã được tạo.")
+
+# Xử lý argparse
+def main():
+    parser = argparse.ArgumentParser(description="Quản lý database và user admin.")
+    subparsers = parser.add_subparsers(dest="command")
+
+    # Lệnh khởi tạo database
+    subparsers.add_parser("init_db", help="Khởi tạo database (tạo bảng nếu chưa có).")
+
+    # Lệnh tạo user admin
+    subparsers.add_parser("create_admin", help="Tạo user admin mặc định.")
+
+    args = parser.parse_args()
+
+    # Chạy lệnh tương ứng
+    if args.command == "init_db":
+        asyncio.run(init_db())
+    elif args.command == "create_admin":
+        asyncio.run(create_admin())
+    else:
+        parser.print_help()
+
+if __name__ == "__main__":
+    main()
