@@ -1,5 +1,6 @@
 from sqlalchemy.future import select
 from sqlalchemy import asc
+from sqlalchemy.exc import SQLAlchemyError
 from app.model.user_permission import UserPermission
 from app.core.database import AsyncSessionLocal
 
@@ -37,8 +38,12 @@ class UserPermissionRepository:
         Thêm nhiều bản ghi UserPermission cùng lúc.
         """
         async with AsyncSessionLocal() as session:
-            session.add_all(user_permissions)
-            await session.commit()
+            try:
+                session.add_all(user_permissions)
+                await session.commit()
+            except SQLAlchemyError:
+                await session.rollback()
+                raise
 
     async def find_by_user_id(self, user_id: int) -> list:
         """
@@ -68,9 +73,13 @@ class UserPermissionRepository:
         Cập nhật một bản ghi UserPermission.
         """
         async with AsyncSessionLocal() as session:
-            session.add(user_permission)
-            await session.commit()
-            await session.refresh(user_permission)
+            try:
+                session.add(user_permission)
+                await session.commit()
+                await session.refresh(user_permission)
+            except SQLAlchemyError:
+                await session.rollback()
+                raise
         return user_permission
 
     async def delete(self, user_permission: UserPermission) -> None:
@@ -78,14 +87,22 @@ class UserPermissionRepository:
         Xóa một bản ghi UserPermission.
         """
         async with AsyncSessionLocal() as session:
-            await session.delete(user_permission)
-            await session.commit()
+            try:
+                await session.delete(user_permission)
+                await session.commit()
+            except SQLAlchemyError:
+                await session.rollback()
+                raise
 
     async def bulk_delete(self, user_permissions: list) -> None:
         """
         Xóa nhiều bản ghi UserPermission cùng lúc.
         """
         async with AsyncSessionLocal() as session:
-            for up in user_permissions:
-                await session.delete(up)
-            await session.commit()
+            try:
+                for up in user_permissions:
+                    await session.delete(up)
+                await session.commit()
+            except SQLAlchemyError:
+                await session.rollback()
+                raise

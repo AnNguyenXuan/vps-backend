@@ -1,27 +1,37 @@
 from sqlalchemy.future import select
 from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from app.model.group_member import GroupMember
 from app.core.database import AsyncSessionLocal
-
+from app.core.exceptions import DuplicateDataError
 
 class GroupMemberRepository:
     async def add(self, group_member: GroupMember) -> GroupMember:
         """
-        Thêm một GroupMember mới vào cơ sở dữ liệu.
+        Thêm một GroupMember mới vào cơ sở dữ liệu với xử lý lỗi trùng dữ liệu.
         """
         async with AsyncSessionLocal() as session:
-            session.add(group_member)
-            await session.commit()
-            await session.refresh(group_member)
-        return group_member
+            try:
+                session.add(group_member)
+                await session.commit()
+                await session.refresh(group_member)
+                return group_member
+            except IntegrityError:
+                await session.rollback()
+                raise DuplicateDataError("User is already a member of the group")
 
-    async def delete(self, group_member: GroupMember) -> None:
+    async def delete(self, group_member: GroupMember) -> bool:
         """
-        Xóa một GroupMember khỏi cơ sở dữ liệu.
+        Xóa một GroupMember khỏi cơ sở dữ liệu và trả về True nếu thành công, False nếu thất bại.
         """
         async with AsyncSessionLocal() as session:
-            await session.delete(group_member)
-            await session.commit()
+            try:
+                await session.delete(group_member)
+                await session.commit()
+                return True
+            except SQLAlchemyError:
+                await session.rollback()
+                return False
 
     async def find_by_user_and_group(self, user, group) -> GroupMember:
         """
@@ -43,8 +53,7 @@ class GroupMemberRepository:
         """
         async with AsyncSessionLocal() as session:
             result = await session.execute(
-                select(GroupMember)
-                .where(GroupMember.user_id == user.id)
+                select(GroupMember).where(GroupMember.user_id == user.id)
             )
             return result.scalars().all()
 

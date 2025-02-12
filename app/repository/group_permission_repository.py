@@ -1,6 +1,6 @@
-# repository/group_permission_repository.py
 from sqlalchemy.future import select
 from sqlalchemy import asc
+from sqlalchemy.exc import SQLAlchemyError
 from app.model.group_permission import GroupPermission
 from app.core.database import AsyncSessionLocal
 
@@ -48,24 +48,36 @@ class GroupPermissionRepository:
         Thêm nhiều bản ghi GroupPermission trong cùng một phiên giao dịch.
         """
         async with AsyncSessionLocal() as session:
-            session.add_all(group_permissions)
-            await session.commit()
+            try:
+                session.add_all(group_permissions)
+                await session.commit()
+            except SQLAlchemyError:
+                await session.rollback()
+                raise
 
     async def bulk_update(self, group_permissions: list) -> None:
         """
         Cập nhật nhiều bản ghi GroupPermission trong cùng một phiên giao dịch.
-        (Ở đây, các đối tượng đã được thay đổi thuộc tính; chỉ cần add lại và commit.)
+        (Các đối tượng đã được thay đổi thuộc tính; chỉ cần add lại và commit.)
         """
         async with AsyncSessionLocal() as session:
-            for gp in group_permissions:
-                session.add(gp)
-            await session.commit()
+            try:
+                for gp in group_permissions:
+                    session.add(gp)
+                await session.commit()
+            except SQLAlchemyError:
+                await session.rollback()
+                raise
 
     async def bulk_delete(self, group_permissions: list) -> None:
         """
         Xóa nhiều bản ghi GroupPermission trong cùng một phiên giao dịch.
         """
         async with AsyncSessionLocal() as session:
-            for gp in group_permissions:
-                await session.delete(gp)
-            await session.commit()
+            try:
+                for gp in group_permissions:
+                    await session.delete(gp)
+                await session.commit()
+            except SQLAlchemyError:
+                await session.rollback()
+                raise

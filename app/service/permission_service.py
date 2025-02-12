@@ -108,10 +108,10 @@ class PermissionService:
                 new_permission.default = default_granted
                 await self.permission_repository.add(new_permission)
 
-        # # (Tùy chọn) Xóa các quyền trong DB mà không có trong static_permissions:
-        # for perm in existing_permissions_list:
-        #     if perm.name not in static_permissions:
-        #         await self.permission_repository.delete(perm)
+        # (Tùy chọn) Xóa các quyền trong DB mà không có trong static_permissions:
+        for perm in existing_permissions_list:
+            if perm.name not in static_permissions:
+                await self.permission_repository.delete(perm)
 
     async def get_all_permissions(self) -> list:
         """Trả về danh sách tất cả các quyền (Permission)."""

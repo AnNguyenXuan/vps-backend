@@ -1,9 +1,11 @@
 from fastapi import HTTPException, status
 from app.repository.group_member_repository import GroupMemberRepository
 from app.model.group_member import GroupMember
+from app.core.exceptions import DuplicateDataError
 from .user_service import UserService
 from .group_service import GroupService
-# from app.exception import AppException  # Giả sử bạn có định nghĩa ngoại lệ riêng
+
+
 
 class GroupMemberService:
     def __init__(self):
@@ -16,12 +18,16 @@ class GroupMemberService:
         Thêm User vào Group.
         Dữ liệu đầu vào phải chứa 'userId' và 'groupId'.
         """
+        # Lấy thông tin user và group, nếu không tìm thấy sẽ được UserService/GroupService raise HTTPException
         user = await self.user_service.get_user_by_id(data["userId"])
         group = await self.group_service.get_group_by_id(data["groupId"])
 
         group_member = GroupMember(user=user, group=group)
-        group_member = await self.group_member_repository.add(group_member)
-        return group_member
+        try:
+            group_member = await self.group_member_repository.add(group_member)
+            return group_member
+        except DuplicateDataError as e:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
     async def remove_user_from_group(self, data: dict) -> None:
         """
@@ -31,8 +37,12 @@ class GroupMemberService:
         group = await self.group_service.get_group_by_id(data["groupId"])
 
         group_member = await self.group_member_repository.find_by_user_and_group(user, group)
-        if group_member:
-            await self.group_member_repository.delete(group_member)
+        if not group_member:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Group member not found")
+        
+        success = await self.group_member_repository.delete(group_member)
+        if not success:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Failed to remove user from group")
 
     async def find_groups_by_user(self, user) -> list:
         """

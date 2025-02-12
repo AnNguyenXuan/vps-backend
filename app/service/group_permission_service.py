@@ -1,10 +1,9 @@
-# service/group_permission_service.py
 from fastapi import HTTPException, status
 from app.repository.group_permission_repository import GroupPermissionRepository
 from app.model.group_permission import GroupPermission
 from .group_service import GroupService
 from .permission_service import PermissionService
-# from app.exception import AppException  # Giả sử bạn có định nghĩa ngoại lệ riêng
+
 
 
 class GroupPermissionService:
@@ -23,9 +22,8 @@ class GroupPermissionService:
                 'is_denied' (mặc định False),
                 'target': nếu bằng "all" thì target_id = None, ngược lại target_id = giá trị target.
         """
+        # Lấy thông tin group; nếu không tồn tại, GroupService đã raise HTTPException
         group = await self.group_service.get_group_by_id(data.get("group_id"))
-        # if not group:
-        #     raise AppException("E10110")  # Nhóm không tồn tại
 
         assigned_permissions = []
         group_permissions_to_add = []
@@ -37,8 +35,11 @@ class GroupPermissionService:
                 continue  # Bỏ qua nếu không tìm thấy quyền
 
             # Yêu cầu trường 'target' phải có trong dữ liệu
-            # if "target" not in permission_data:
-            #     raise AppException("E1004")  # Target không được cung cấp
+            if "target" not in permission_data:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Target not provided for permission: {permission_key}"
+                )
 
             gp = GroupPermission()
             gp.group = group
@@ -72,8 +73,6 @@ class GroupPermissionService:
                 'is_active', 'is_denied', 'target'
         """
         group = await self.group_service.get_group_by_id(data.get("group_id"))
-        # if not group:
-        #     raise AppException("E10110")  # Nhóm không tồn tại
 
         updated_permissions = []
         group_permissions_to_update = []
@@ -84,13 +83,21 @@ class GroupPermissionService:
                 continue  # Bỏ qua nếu không tìm thấy quyền
 
             gp = await self.repository.find_one_by_group_and_permission(group, permission)
-            # if not gp:
-            #     raise AppException("E2023")  # Quyền không tồn tại cho nhóm
+            if not gp:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Permission '{permission_key}' is not assigned to the group"
+                )
+
+            # Yêu cầu trường 'target' phải có trong dữ liệu
+            if "target" not in permission_data:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Target not provided for permission: {permission_key}"
+                )
 
             gp.is_active = permission_data.get("is_active", gp.is_active)
             gp.is_denied = permission_data.get("is_denied", gp.is_denied)
-            # if "target" not in permission_data:
-            #     raise AppException("E1004")
             gp.target_id = None if permission_data["target"] == "all" else permission_data["target"]
 
             group_permissions_to_update.append(gp)
@@ -131,8 +138,6 @@ class GroupPermissionService:
           - permissions: list các permission name cần xóa.
         """
         group = await self.group_service.get_group_by_id(data.get("group_id"))
-        # if not group:
-        #     raise AppException("E10110")  # Nhóm không tồn tại
 
         group_permissions_to_delete = []
         for permission_name in data.get("permissions", []):

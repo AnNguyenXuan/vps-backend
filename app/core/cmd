@@ -39,12 +39,15 @@ def prompt_password():
 # Hàm tạo superadmin
 async def create_superadmin():
     """Tạo superadmin với mật khẩu được nhập từ bàn phím."""
-    # Chạy hàm prompt_password trong một thread riêng để không chặn event loop
-    password = await asyncio.to_thread(prompt_password)
-    if await user_service.create_superadmin(password):
-        print("✅ superadmin đã được tạo.")
-    else:
+    try:
+        await user_service.get_user_by_username("superadmin")
         print("❌ superadmin đã tồn tại, Không cần tạo mới")
+    except:
+        password = await asyncio.to_thread(prompt_password)
+        if await user_service.create_superadmin(password):
+            print("✅ superadmin đã được tạo.")
+        else:
+            print("❌ tạo superadmin không thành công")
 
 # Hàm thay đổi mật khẩu superadmin
 async def change_superadmin_password():

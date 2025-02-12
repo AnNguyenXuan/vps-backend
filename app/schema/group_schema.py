@@ -17,7 +17,17 @@ class GroupCreate(GroupBase):
     model_config = {
         "json_schema_extra": {
             "example": {
-                "name": "Quản trị viên",
+                "name": "admin",
+                "description": "Nhóm người dùng có quyền quản trị hệ thống."
+            }
+        }
+    }
+
+class GroupUpdate(GroupBase):
+    model_config = {
+        "json_schema_extra": {
+            "example": {
+                "name": "admin",
                 "description": "Nhóm người dùng có quyền quản trị hệ thống."
             }
         }
@@ -31,7 +41,7 @@ class GroupRead(GroupBase):
         "json_schema_extra": {
             "example": {
                 "id": 1,
-                "name": "Quản trị viên",
+                "name": "admin",
                 "description": "Nhóm người dùng có quyền quản trị hệ thống."
             }
         }

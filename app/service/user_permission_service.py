@@ -3,8 +3,6 @@ from app.repository.user_permission_repository import UserPermissionRepository
 from app.model.user_permission import UserPermission
 from .user_service import UserService
 from .permission_service import PermissionService
-# from app.exception import AppException  # Giả sử bạn có định nghĩa ngoại lệ riêng
-
 
 class UserPermissionService:
     def __init__(self):
@@ -24,8 +22,7 @@ class UserPermissionService:
               'target': nếu bằng "all" thì target_id = None, ngược lại target_id = giá trị target.
         """
         user = await self.user_service.get_user_by_id(data.get("user_id"))
-        # if not user:
-        #     raise AppException("E1004")  # Người dùng không tồn tại
+        # Nếu user không tồn tại, UserService sẽ raise HTTPException
 
         assigned_permissions = []
         user_permissions_to_add = []
@@ -35,8 +32,13 @@ class UserPermissionService:
             if not permission:
                 continue  # Bỏ qua nếu không tìm thấy quyền
 
-            # if "target" not in permission_data:
-            #     raise AppException("E1004")
+            # Yêu cầu trường 'target' phải có trong dữ liệu
+            if "target" not in permission_data:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Target not provided for permission: {permission_key}"
+                )
+
             user_permission = UserPermission()
             user_permission.user = user
             user_permission.permission = permission
@@ -61,7 +63,7 @@ class UserPermissionService:
         user_permissions = []
         user_permissions_to_add = []
         for permission in permissions:
-            # Kiểm tra đối tượng permission phải là instance của Permission
+            # Kiểm tra đối tượng permission phải có thuộc tính `id`
             if not hasattr(permission, "id"):
                 raise ValueError("Each item in permissions array must be an instance of Permission.")
 
@@ -101,24 +103,27 @@ class UserPermissionService:
               'is_active', 'is_denied', 'target'
         """
         user = await self.user_service.get_user_by_id(data.get("user_id"))
-        # if not user:
-        #     raise AppException("E1004")  # Người dùng không tồn tại
-
         updated_permissions = []
 
         for permission_key, permission_data in data.get("permissions", {}).items():
             permission = await self.permission_service.get_permission_by_name(permission_key)
             if not permission:
-                continue  # Nếu quyền không tồn tại, bỏ qua
+                continue  # Bỏ qua nếu không tìm thấy quyền
 
             user_permission = await self.repository.find_one_by_user_and_permission(user.id, permission.id)
-            # if not user_permission:
-            #     raise AppException("E2023")  # Quyền không tồn tại cho người dùng
+            if not user_permission:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Permission '{permission_key}' is not assigned to the user"
+                )
 
             user_permission.is_active = permission_data.get("is_active", user_permission.is_active)
             user_permission.is_denied = permission_data.get("is_denied", user_permission.is_denied)
-            # if "target" not in permission_data:
-            #     raise AppException("E1004")
+            if "target" not in permission_data:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail=f"Target not provided for permission: {permission_key}"
+                )
             user_permission.target_id = None if permission_data["target"] == "all" else permission_data["target"]
 
             await self.repository.update(user_permission)
@@ -155,14 +160,11 @@ class UserPermissionService:
           - permissions: list các permission name cần xóa.
         """
         user = await self.user_service.get_user_by_id(data.get("user_id"))
-        # if not user:
-        #     raise AppException("E1004")  # Người dùng không tồn tại
-
         user_permissions_to_delete = []
         for permission_name in data.get("permissions", []):
             permission = await self.permission_service.get_permission_by_name(permission_name)
             if not permission:
-                continue  # Bỏ qua nếu quyền không tồn tại
+                continue  # Bỏ qua nếu không tìm thấy quyền
 
             user_permission = await self.repository.find_one_by_user_and_permission(user.id, permission.id)
             if user_permission:

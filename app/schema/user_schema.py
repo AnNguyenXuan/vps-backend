@@ -13,13 +13,12 @@ class UserBase(BaseModel):
             strip_whitespace=True
         )
     ]
-    email: EmailStr
+    email: EmailStr | None = None
     phone: Annotated[
         str, 
         StringConstraints(min_length=10, max_length=15, pattern=r"^[0-9]+$")
     ] | None = None
     address: Annotated[str, StringConstraints(max_length=255)] | None = None
-    is_active: bool = True
 
     @field_validator("username")
     @classmethod
@@ -65,7 +64,6 @@ class UserCreate(UserBase):
                 "email": "john.doe@example.com",
                 "phone": "0987654321",
                 "address": "123 Đường ABC, Quận 1, TP.HCM",
-                "is_active": True,
                 "password": "StrongP@ss1"
             }
         }
@@ -87,7 +85,6 @@ class UserRead(UserBase):
                 "email": "john.doe@example.com",
                 "phone": "0987654321",
                 "address": "123 Đường ABC, Quận 1, TP.HCM",
-                "is_active": True,
                 "created_at": "2025-01-01T12:00:00",
                 "updated_at": "2025-02-01T12:00:00"
             }
@@ -123,7 +120,6 @@ class UserUpdate(UserBase):
                 "email": "john.doe@example.com",
                 "phone": "0987654321",
                 "address": "123 Đường ABC, Quận 1, TP.HCM",
-                "is_active": True,
                 "password": "NewStrongP@ss1"
             }
         }
