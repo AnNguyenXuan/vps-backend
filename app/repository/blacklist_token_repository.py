@@ -16,13 +16,13 @@ class BlacklistTokenRepository:
             return token
 
     async def is_token_blacklisted(self, token_id: str) -> bool:
-        """ Kiểm tra token có trong blacklist và chưa hết hạn """
+        """ Kiểm tra token có trong blacklist """
         async with AsyncSessionLocal() as session:
             result = await session.execute(
                 select(BlacklistToken).where(BlacklistToken.id == token_id)
             )
             token = result.scalar_one_or_none()
-            return token is not None and token.expires_at > datetime.utcnow()
+            return token is not None
 
     async def delete_token(self, token_id: str):
         """ Xóa token khỏi blacklist """

@@ -1,32 +1,32 @@
 from fastapi import APIRouter, HTTPException, status, Query
 from app.schema.user_schema import UserCreate, UserRead, UserUpdate
 from app.service.user_service import UserService
-# from app.service.authorization_service import AuthorizationService
+from app.core.security import user_context
 
 
 user_service = UserService()
-# auth_service = AuthorizationService()
 router = APIRouter(prefix="/users", tags=["Users"])
 
 
 @router.get("/", response_model=list[UserRead])
 async def list_users(
-    # user_current: User = Depends(auth_service.get_current_user),
     page: int = Query(1, ge=1),
     limit: int = Query(10, ge=1),
 ):
+    # user_current = user_context.get()
     # if not auth_service.check_permission(user_current, "view_users"):
     #     raise HTTPException(status_code=403, detail="E2020")
 
     users = await user_service.get_active_users_paginated(page, limit)
+    print(user_context.get().username)
     return users
 
-
-# @router.get("/me", response_model=UserRead)
-# async def get_current_user(user: User = Depends(auth_service.get_current_user)):
-#     if not user:
-#         raise HTTPException(status_code=404, detail="E2002")
-#     return user
+@router.get("/me", response_model=UserRead)
+async def get_current_user():
+    user_current = user_context.get()
+    if not user_current:
+        raise HTTPException(status_code=404, detail="bạn chưa đăng nhập")
+    return user_current
 
 
 @router.get("/{id}", response_model=UserRead)

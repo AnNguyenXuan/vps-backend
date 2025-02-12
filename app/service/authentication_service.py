@@ -7,6 +7,15 @@ from .user_service import UserService
 from .blacklist_token_service import BlacklistTokenService
 from .refresh_token_service import RefreshTokenService
 from app.core.config import SECRET_KEY, ALGORITHM, JWT_ISSUER, JWT_AUDIENCE, ACCESS_TOKEN_EXPIRE, REFRESH_TOKEN_EXPIRE
+from app.schema.auth_schema import (
+    LoginRequest,
+    TokenResponse,
+    AccessTokenResponse,
+    RefreshTokenResponse,
+    ChangePasswordRequest,
+    VerifyPasswordRequest,
+    RefreshTokenRequest
+)
 
 
 class AuthenticationService:
@@ -64,7 +73,7 @@ class AuthenticationService:
     async def validate_token(self, token: str) -> dict:
         """
         Xác thực JWT token và trả về payload nếu hợp lệ.
-        Nếu không hợp lệ, ném ngoại lệ.
+        Nếu không hợp lệ hoặc hết hạn, ném ngoại lệ.
         """
         try:
             payload = jwt.decode(
@@ -74,16 +83,28 @@ class AuthenticationService:
                 audience=JWT_AUDIENCE,
                 issuer=JWT_ISSUER,
             )
-        except JWTError as e:
+
+            # Kiểm tra thời gian hết hạn của token
+            exp_timestamp = payload.get("exp")
+            if not exp_timestamp or datetime.utcfromtimestamp(exp_timestamp) < datetime.utcnow():
+                raise HTTPException(status_code=401, detail="Token has expired")
+
+        except JWTError:
             raise HTTPException(status_code=401, detail="Invalid token")
 
         return payload
 
+
     async def get_current_user(self, token: str) -> User:
-        payload = self.validate_token(token)
+        payload = await self.validate_token(token)
+        if "jti" in payload:
+            if await self.blacklist_token_service.is_token_blacklisted(payload["jti"]):
+                raise HTTPException(status_code=401, detail="You have logged out.")
+        else:
+            raise HTTPException(status_code=401, detail="Invalid token")
         if "uid" in payload:
             user_id = payload["uid"]
-            return await self.user_service.get_user_by_id(user_id)
+            return (await self.user_service.get_user_by_id(user_id), payload)
         else:
             raise HTTPException(status_code=401, detail="Invalid token")
 
@@ -99,7 +120,7 @@ class AuthenticationService:
         user_id = payload.get("uid")
 
         # Kiểm tra Refresh Token trong DB
-        stored_token = await self.refresh_token_service.get_token_by_id(jti)
+        stored_token = await self.refresh_token_service.get_token(jti)
         if not stored_token:
             raise Exception("Refresh token not found or invalid.")
         if stored_token.expires_at < datetime.utcnow():
@@ -113,11 +134,20 @@ class AuthenticationService:
         # Tạo Access Token mới, sử dụng refresh token id từ refresh token hiện tại
         return await self.create_token(user, "access", refresh_token_id=jti)
 
-    async def logout(self, access_token_string: str) -> None:
+    async def login(self, request: LoginRequest):
+        "Đăng nhập cho người dùng."
+        user = await self.user_service.verify_user_password(request.username, request.password)
+        refresh_token = await self.create_token(user, "refresh")
+        refresh_id = await self.extract_token_id(refresh_token)
+        if not refresh_id:
+            raise HTTPException(status_code=500, detail="Unable to extract Refresh Token ID")
+        access_token = await self.create_token(user, "access", refresh_id)
+        return access_token, refresh_token
+
+    async def logout(self, payload: dict) -> None:
         """
         Đăng xuất: vô hiệu hóa Access Token và xóa Refresh Token.
         """
-        payload = await self.validate_token(access_token_string)
         jti = payload.get("jti")
         exp_timestamp = payload.get("exp")
         refresh_id = payload.get("refreshId")

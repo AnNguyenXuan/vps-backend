@@ -117,7 +117,7 @@ class UserService:
         if not pwd_context.verify(password, user.password):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Incorrect password"
+                detail="Invalid username or password"
             )
         return user
 
