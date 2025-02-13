@@ -18,7 +18,6 @@ async def list_users(
     #     raise HTTPException(status_code=403, detail="E2020")
 
     users = await user_service.get_active_users_paginated(page, limit)
-    print(user_context.get().username)
     return users
 
 @router.get("/me", response_model=UserRead)

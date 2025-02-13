@@ -1,5 +1,5 @@
-from fastapi import APIRouter, HTTPException, status, Depends
-from app.core.security import authentication, authorization, user_context, payload_context
+from fastapi import APIRouter, HTTPException, status
+from app.core.security import authentication, user_context, payload_context
 from app.service.user_service import UserService
 from app.schema.auth_schema import (
     LoginRequest,
@@ -42,46 +42,32 @@ async def logout():
         raise HTTPException(status_code=400, detail=str(e))
 
 
-# @router.post("/change-password", status_code=status.HTTP_200_OK)
-# async def change_password(request: ChangePasswordRequest, user=Depends(authentication.get_current_user)):
-#     if not user:
-#         raise HTTPException(status_code=401, detail="User not authenticated")
-
-#     if not request.currentPassword or not request.newPassword:
-#         raise HTTPException(status_code=400, detail="Both current and new password are required")
-
-#     try:
-#         await user_service.change_user_password(user, request.currentPassword, request.newPassword)
-#         return {"message": "Password changed successfully"}
-#     except Exception as e:
-#         raise HTTPException(status_code=400, detail=str(e))
+@router.post("/change-password", status_code=status.HTTP_200_OK)
+async def change_password(request: ChangePasswordRequest):
+    current_user = user_context.get()
+    if current_user is None:
+        raise HTTPException(status_code=401, detail="You have not logged in")
+    try:
+        await user_service.change_user_password(current_user, request.currentPassword, request.newPassword)
+        return {"message": "Password changed successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 
-# @router.post("/verify-password", status_code=status.HTTP_200_OK)
-# async def verify_password(request: VerifyPasswordRequest, user=Depends(authentication.get_current_user)):
-#     if not user:
-#         raise HTTPException(status_code=401, detail="User not authenticated")
-
-#     if not request.password:
-#         raise HTTPException(status_code=400, detail="Password is required")
-
-#     try:
-#         is_valid = await user_service.verify_password(user, request.password)
-#         if is_valid:
-#             return {"message": "Password is correct"}
-#         else:
-#             raise HTTPException(status_code=400, detail="Incorrect password")
-#     except Exception as e:
-#         raise HTTPException(status_code=400, detail=str(e))
+@router.post("/verify-password", status_code=status.HTTP_200_OK)
+async def verify_password(request: VerifyPasswordRequest):
+    current_user = user_context.get()
+    if current_user is None:
+        raise HTTPException(status_code=401, detail="You have not logged in")
+    await user_service.verify_user_password(current_user.username, request.password)
+    return {"message": "Password is correct"}
 
 
-# @router.post("/refresh-refresh-token", response_model=RefreshTokenResponse)
-# async def refresh_refresh_token(request: RefreshTokenRequest):
-#     if not request.refreshToken:
-#         raise HTTPException(status_code=400, detail="Refresh token is required")
 
-#     try:
-#         new_refresh_token = authentication.refresh_refresh_token(request.refreshToken)
-#         return {"refreshToken": new_refresh_token}
-#     except Exception as e:
-#         raise HTTPException(status_code=400, detail=str(e))
+@router.post("/refresh-refresh-token", response_model=RefreshTokenResponse)
+async def refresh_refresh_token(request: RefreshTokenRequest):
+    try:
+        new_refresh_token = await authentication.refresh_refresh_token(request.refreshToken)
+        return {"refreshToken": new_refresh_token}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))

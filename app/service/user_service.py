@@ -117,13 +117,12 @@ class UserService:
         if not pwd_context.verify(password, user.password):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid username or password"
+                detail="The password is incorrect"
             )
         return user
 
-    async def change_user_password(self, user_id: int, current_password: str, new_password: str):
+    async def change_user_password(self, user: User, current_password: str, new_password: str):
         """Thay đổi mật khẩu người dùng"""
-        user = await self.get_user_by_id(user_id)
         if not pwd_context.verify(current_password, user.password):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,

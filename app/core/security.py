@@ -22,6 +22,11 @@ class JWTMiddleware(BaseHTTPMiddleware):
                 user, payload = await authentication.get_current_user(token)
                 user_context.set(user)
                 payload_context.set(payload)
+                if payload['type']!='access':
+                    return JSONResponse(
+                    status_code=401,
+                    content={"detail": 'Invalid token'},
+                )
             except HTTPException as e:
                 return JSONResponse(
                     status_code=e.status_code,

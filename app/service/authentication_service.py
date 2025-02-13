@@ -1,21 +1,14 @@
 import os
 from fastapi import HTTPException
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from jose import jwt, JWTError
 from app.model.user import User
 from .user_service import UserService
 from .blacklist_token_service import BlacklistTokenService
 from .refresh_token_service import RefreshTokenService
 from app.core.config import SECRET_KEY, ALGORITHM, JWT_ISSUER, JWT_AUDIENCE, ACCESS_TOKEN_EXPIRE, REFRESH_TOKEN_EXPIRE
-from app.schema.auth_schema import (
-    LoginRequest,
-    TokenResponse,
-    AccessTokenResponse,
-    RefreshTokenResponse,
-    ChangePasswordRequest,
-    VerifyPasswordRequest,
-    RefreshTokenRequest
-)
+from app.schema.auth_schema import LoginRequest
+
 
 
 class AuthenticationService:
@@ -31,7 +24,7 @@ class AuthenticationService:
         - Với access token, refresh_token_id (ID của refresh token) là bắt buộc.
         - Với refresh token, thêm claim reuseCount.
         """
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         if token_type == "access":
             ttl = ACCESS_TOKEN_EXPIRE
             if not refresh_token_id:
@@ -63,9 +56,7 @@ class AuthenticationService:
 
         token = jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
-        # Nếu tạo refresh token, lưu thông tin vào refresh_token_service
         if token_type == "refresh":
-            # Giả sử refresh_token_service.create_token là một hàm async nhận (jti, expires_at)
             await self.refresh_token_service.create_token(jti, exp)
 
         return token
@@ -86,14 +77,13 @@ class AuthenticationService:
 
             # Kiểm tra thời gian hết hạn của token
             exp_timestamp = payload.get("exp")
-            if not exp_timestamp or datetime.utcfromtimestamp(exp_timestamp) < datetime.utcnow():
+            if not exp_timestamp or datetime.fromtimestamp(exp_timestamp, tz=timezone.utc) < datetime.now(timezone.utc):
                 raise HTTPException(status_code=401, detail="Token has expired")
 
         except JWTError:
             raise HTTPException(status_code=401, detail="Invalid token")
 
         return payload
-
 
     async def get_current_user(self, token: str) -> User:
         payload = await self.validate_token(token)
@@ -123,7 +113,7 @@ class AuthenticationService:
         stored_token = await self.refresh_token_service.get_token(jti)
         if not stored_token:
             raise Exception("Refresh token not found or invalid.")
-        if stored_token.expires_at < datetime.utcnow():
+        if stored_token.expires_at < datetime.now(timezone.utc):
             raise Exception("Refresh token has expired.")
 
         # Lấy thông tin người dùng
@@ -154,7 +144,7 @@ class AuthenticationService:
         if not refresh_id:
             raise Exception("Refresh Token ID is missing in the Access Token.")
 
-        expires_at = datetime.utcfromtimestamp(exp_timestamp)
+        expires_at = datetime.fromtimestamp(exp_timestamp, tz=timezone.utc)
         await self.blacklist_token_service.add_token(jti, expires_at)
         await self.refresh_token_service.delete_token(refresh_id)
 
@@ -181,10 +171,11 @@ class AuthenticationService:
         user_id = payload.get("uid")
 
         # Kiểm tra tính hợp lệ của refresh token trong DB
-        stored_token = await self.refresh_token_service.get_token_by_id(jti)
+        stored_token = await self.refresh_token_service.get_token(jti)
         if not stored_token or reuse_count > 12:
             raise Exception("Invalid or overused Refresh Token.")
-        if stored_token.expires_at < datetime.utcnow():
+        if stored_token.expires_at < datetime.now(timezone.utc):
+            await self.refresh_token_service.delete_token(jti)
             raise Exception("Refresh Token has expired.")
 
         user = await self.user_service.get_user_by_id(user_id)
@@ -192,4 +183,6 @@ class AuthenticationService:
             raise Exception("User not found.")
 
         # Tạo refresh token mới với reuseCount tăng thêm 1
-        return await self.create_token(user, "refresh", reuse_count=reuse_count + 1)
+        new_refresh = await self.create_token(user, "refresh", reuse_count=reuse_count + 1)
+        await self.refresh_token_service.delete_token(jti)
+        return new_refresh
