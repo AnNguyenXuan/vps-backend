@@ -5,7 +5,7 @@ from app.service.group_service import GroupService
 # Nếu có, import validator
 # from app.validators.group_permission_validator import GroupPermissionValidator
 
-router = APIRouter(prefix="/api/group-permissions", tags=["GroupPermission"])
+router = APIRouter(prefix="/group-permissions", tags=["GroupPermission"])
 
 
 group_service = GroupService()
@@ -102,46 +102,6 @@ async def update_permission(request: Request):
     # Nếu có validator: validated_data = group_permission_validator.validate_assign_or_update_permission(data)
     updated_permissions = await group_permission_service.update_permission(data)
     return updated_permissions
-
-
-@router.post("/check")
-async def has_permission(request: Request):
-    """
-    Kiểm tra quyền của Group.
-    Yêu cầu:
-      - User tồn tại.
-      - Có quyền "view_permissions".
-      - Dữ liệu JSON chứa ít nhất các trường: 'group_id' và 'permission_name'.
-    Ví dụ payload:
-            {
-                "group_id": 123,
-                "permission_name": "permission_name_1",
-                "target_id": 456    // Có thể là None nếu không cần so sánh
-            }
-    """
-    user = getattr(request.state, "user", None)
-    if not user:
-        raise HTTPException(status_code=401, detail="E1004")
-    # if not authorization_service.check_permission(user, "view_permissions"):
-    #     raise HTTPException(status_code=403, detail="E2021")
-
-    try:
-        data = await request.json()
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid JSON payload")
-
-    group_id = data.get("group_id")
-    permission_name = data.get("permission_name")
-    target_id = data.get("target_id")
-
-    if not group_id or not permission_name:
-        raise HTTPException(status_code=400, detail="Invalid input.")
-
-    try:
-        permission_status = await group_permission_service.has_permission(group_id, permission_name, target_id)
-        return {"has_permission": permission_status}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.delete("")

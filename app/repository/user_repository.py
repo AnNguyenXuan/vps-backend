@@ -50,19 +50,19 @@ class UserRepository:
             )
             return result.scalars().all()
 
-    async def get_user_by_id(self, user_id: int):
+    async def get_user_by_id(self, user_id: int) -> User | None:
         """Tìm user theo ID"""
         async with AsyncSessionLocal() as session:
             result = await session.execute(select(User).where(User.id == user_id))
             return result.scalar_one_or_none()
 
-    async def get_user_by_username(self, username: str):
+    async def get_user_by_username(self, username: str) -> User | None:
         """Tìm user theo username"""
         async with AsyncSessionLocal() as session:
             result = await session.execute(select(User).where(User.username == username))
             return result.scalar_one_or_none()
 
-    async def get_user_by_email(self, email: str):
+    async def get_user_by_email(self, email: str) -> User | None:
         """Tìm user theo email"""
         async with AsyncSessionLocal() as session:
             result = await session.execute(select(User).where(User.email == email))

@@ -1,8 +1,11 @@
 from sqlalchemy.future import select
 from sqlalchemy import asc
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.dialects.postgresql import insert
+from app.model.permission import Permission
 from app.model.user_permission import UserPermission
 from app.core.database import AsyncSessionLocal
+from app.core.exceptions import NotFoundError
 
 
 class UserPermissionRepository:
@@ -10,99 +13,86 @@ class UserPermissionRepository:
         """
         Lấy danh sách UserPermission theo user_id và permission_name,
         ưu tiên bản ghi có target_id = None (sắp xếp theo target_id ASC).
-        Giả sử mối quan hệ giữa UserPermission và Permission được định nghĩa qua thuộc tính `permission`
-        và Permission có trường `name`.
         """
         async with AsyncSessionLocal() as session:
             result = await session.execute(
                 select(UserPermission)
-                .join(UserPermission.permission)
+                .join(Permission, UserPermission.permission_id == Permission.id)
                 .where(UserPermission.user_id == user_id)
-                .where(UserPermission.permission.has(name=permission_name))
+                .where(Permission.name == permission_name)
                 .order_by(asc(UserPermission.target_id))
             )
             return result.scalars().all()
 
-    async def add(self, user_permission: UserPermission) -> UserPermission:
+    async def find_by_user_id(self, user_id: int) -> list[UserPermission]:
         """
-        Thêm một bản ghi UserPermission.
-        """
-        async with AsyncSessionLocal() as session:
-            session.add(user_permission)
-            await session.commit()
-            await session.refresh(user_permission)
-        return user_permission
-
-    async def bulk_insert(self, user_permissions: list) -> None:
-        """
-        Thêm nhiều bản ghi UserPermission cùng lúc.
-        """
-        async with AsyncSessionLocal() as session:
-            try:
-                session.add_all(user_permissions)
-                await session.commit()
-            except SQLAlchemyError:
-                await session.rollback()
-                raise
-
-    async def find_by_user_id(self, user_id: int) -> list:
-        """
-        Lấy danh sách UserPermission theo user_id.
+        Lấy danh sách UserPermission theo user_id, sắp xếp theo id (tăng dần).
         """
         async with AsyncSessionLocal() as session:
             result = await session.execute(
-                select(UserPermission).where(UserPermission.user_id == user_id)
+                select(UserPermission)
+                .where(UserPermission.user_id == user_id)
+                .order_by(UserPermission.id.asc())
             )
             return result.scalars().all()
 
-    async def find_one_by_user_and_permission(self, user_id: int, permission_id: int) -> UserPermission:
+    async def bulk_insert(self, user_permissions: list) -> None:
         """
-        Tìm một bản ghi UserPermission dựa vào user_id và permission_id.
-        """
-        async with AsyncSessionLocal() as session:
-            result = await session.execute(
-                select(UserPermission).where(
-                    UserPermission.user_id == user_id,
-                    UserPermission.permission_id == permission_id
-                )
-            )
-            return result.scalar_one_or_none()
-
-    async def update(self, user_permission: UserPermission) -> UserPermission:
-        """
-        Cập nhật một bản ghi UserPermission.
+        Thêm nhiều bản ghi UserPermission cùng lúc, bỏ qua các bản ghi trùng lặp dựa theo unique constraint.
         """
         async with AsyncSessionLocal() as session:
             try:
-                session.add(user_permission)
-                await session.commit()
-                await session.refresh(user_permission)
-            except SQLAlchemyError:
-                await session.rollback()
-                raise
-        return user_permission
-
-    async def delete(self, user_permission: UserPermission) -> None:
-        """
-        Xóa một bản ghi UserPermission.
-        """
-        async with AsyncSessionLocal() as session:
-            try:
-                await session.delete(user_permission)
+                # Chuyển danh sách đối tượng thành danh sách dict
+                records = [
+                    {
+                        "user_id": up.user_id,
+                        "permission_id": up.permission_id,
+                        "target_id": up.target_id,
+                        "record_enabled": up.record_enabled,
+                        "is_denied": up.is_denied
+                    }
+                    for up in user_permissions
+                ]
+                stmt = insert(UserPermission).values(records)
+                # Xác định các cột để kiểm tra xung đột và bỏ qua nếu đã tồn tại
+                stmt = stmt.on_conflict_do_nothing(index_elements=["user_id", "permission_id", "target_id"])
+                await session.execute(stmt)
                 await session.commit()
             except SQLAlchemyError:
                 await session.rollback()
                 raise
 
-    async def bulk_delete(self, user_permissions: list) -> None:
+    async def bulk_update(self, user_permissions: list[UserPermission]) -> None:
         """
-        Xóa nhiều bản ghi UserPermission cùng lúc.
+        Cập nhật nhiều bản ghi UserPermission cùng lúc.
+        Sử dụng session.merge để đảm bảo đối tượng được cập nhật đúng trong session mới.
         """
         async with AsyncSessionLocal() as session:
             try:
                 for up in user_permissions:
-                    await session.delete(up)
+                    session.merge(up)
                 await session.commit()
+                print("ha ha ha ha ha ha ha ha ha ha ha ha ha ha ha ha ha ha")
             except SQLAlchemyError:
                 await session.rollback()
                 raise
+
+    async def bulk_delete(self, user_permissions: list[UserPermission]) -> list[UserPermission]:
+        """
+        Xóa nhiều bản ghi UserPermission cùng lúc.
+        Nếu có bản ghi lỗi, nó sẽ không bị xóa nhưng các bản ghi hợp lệ khác vẫn được xóa.
+        Trả về danh sách các bản ghi bị lỗi khi xóa.
+        """
+        async with AsyncSessionLocal() as session:
+            failed_deletes = []  # Danh sách các bản ghi không thể xóa
+            try:
+                for up in user_permissions:
+                    try:
+                        await session.delete(up)  # Xóa từng bản ghi
+                    except SQLAlchemyError:
+                        failed_deletes.append(up)  # Ghi lại bản ghi gây lỗi
+                await session.commit()  # Chỉ commit nếu ít nhất một bản ghi hợp lệ được xóa
+            except SQLAlchemyError:
+                await session.rollback()  # Rollback toàn bộ nếu có lỗi nghiêm trọng
+                raise
+        return failed_deletes

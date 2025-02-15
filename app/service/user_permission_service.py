@@ -1,8 +1,12 @@
 from fastapi import HTTPException, status
 from app.repository.user_permission_repository import UserPermissionRepository
 from app.model.user_permission import UserPermission
+from app.model.user import User
 from .user_service import UserService
 from .permission_service import PermissionService
+from app.schema.user_permission_schema import UserPermissionsAssign, UserPermissionsUpdate, UserPermissionsRead, UserPermissionsReadDetail
+
+
 
 class UserPermissionService:
     def __init__(self):
@@ -10,45 +14,26 @@ class UserPermissionService:
         self.user_service = UserService()
         self.permission_service = PermissionService()
 
-    async def assign_permissions(self, data: dict) -> list:
+    async def assign_permissions(self, data: UserPermissionsAssign) -> list:
         """
         Gán (assign) quyền cho người dùng.
-        Dữ liệu đầu vào bao gồm:
-          - user_id: int
-          - permissions: dict, với key là permission name,
-            value là dict chứa:
-              'is_active' (mặc định True),
-              'is_denied' (mặc định False),
-              'target': nếu bằng "all" thì target_id = None, ngược lại target_id = giá trị target.
         """
-        user = await self.user_service.get_user_by_id(data.get("user_id"))
+        user = await self.user_service.get_user_by_id(data.user_id)
         # Nếu user không tồn tại, UserService sẽ raise HTTPException
 
         assigned_permissions = []
         user_permissions_to_add = []
 
-        for permission_key, permission_data in data.get("permissions", {}).items():
-            permission = await self.permission_service.get_permission_by_name(permission_key)
-            if not permission:
-                continue  # Bỏ qua nếu không tìm thấy quyền
-
-            # Yêu cầu trường 'target' phải có trong dữ liệu
-            if "target" not in permission_data:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Target not provided for permission: {permission_key}"
-                )
-
-            user_permission = UserPermission()
-            user_permission.user = user
-            user_permission.permission = permission
-            user_permission.is_active = permission_data.get("is_active", True)
-            user_permission.is_denied = permission_data.get("is_denied", False)
-            user_permission.target_id = None if permission_data["target"] == "all" else permission_data["target"]
+        for permission_data in data.permissions:
+            # Raise HTTPException nếu permission không tồn tại
+            permission = await self.permission_service.get_permission_by_id(permission_data.permission_id)
+            user_permission = UserPermission(user_id=user.id, permission_id=permission.id, record_enabled=False, is_denied=False)
+            user_permission.target_id = None if permission_data.target == "all" else permission_data.target
 
             user_permissions_to_add.append(user_permission)
             assigned_permissions.append({
-                "permission": permission_key,
+                "permission": permission.name,
+                "target": permission_data.target,
                 "status": "assigned"
             })
 
@@ -80,59 +65,62 @@ class UserPermissionService:
         await self.repository.bulk_insert(user_permissions_to_add)
         return user_permissions
 
-    async def find_permissions_by_user(self, user) -> list:
-        """
-        Lấy danh sách các quyền (UserPermission) của người dùng.
-        """
-        return await self.repository.find_by_user_id(user.id)
-
-    async def get_permissions_by_user(self, user) -> list:
+    async def find_permissions_by_user(self, user: User) -> list[UserPermission]:
         """
         Lấy danh sách tên quyền của người dùng.
         """
-        user_permissions = await self.repository.find_by_user_id(user.id)
-        return [up.permission.name for up in user_permissions]
+        return await self.repository.find_by_user_id(user.id)
 
-    async def update_permission(self, data: dict) -> list:
+    async def get_permissions_by_user(self, user: User) -> UserPermissionsRead:
+        """
+        Lấy danh sách quyền của người dùng và chuyển đổi thành schema UserPermissionsRead.
+        """
+        user_permissions = await self.repository.find_by_user_id(user.id)
+        details = []
+        for up in user_permissions:
+            permission = await self.permission_service.get_permission_by_id(up.permission_id)
+            detail = UserPermissionsReadDetail(
+                id=up.id,
+                permission_id=up.permission_id,
+                name=permission.name,
+                record_enabled=up.record_enabled,
+                is_denied=up.is_denied,
+                target=up.target_id if up.target_id is not None else "all"
+            )
+            details.append(detail)
+        return UserPermissionsRead(user_id=user.id, permissions=details)
+    
+    async def update_permission(self, data: UserPermissionsUpdate) -> list:
         """
         Cập nhật quyền của người dùng.
-        Dữ liệu đầu vào bao gồm:
-          - user_id: int
-          - permissions: dict với key là permission name,
-            value là dict chứa:
-              'is_active', 'is_denied', 'target'
+        Schema update dựa trên các trường:
+          - id: id của UserPermission cần cập nhật.
+          - record_enabled: cập nhật trạng thái record_enabled.
+          - is_denied: cập nhật trạng thái is_denied.
         """
-        user = await self.user_service.get_user_by_id(data.get("user_id"))
+        user = await self.user_service.get_user_by_id(data.user_id)
+        existing_user_permissions = await self.repository.find_by_user_id(user.id)
+        # Tạo map từ id đến đối tượng UserPermission để tra cứu nhanh
+        user_permission_map = {up.id: up for up in existing_user_permissions}
         updated_permissions = []
 
-        for permission_key, permission_data in data.get("permissions", {}).items():
-            permission = await self.permission_service.get_permission_by_name(permission_key)
-            if not permission:
-                continue  # Bỏ qua nếu không tìm thấy quyền
-
-            user_permission = await self.repository.find_one_by_user_and_permission(user.id, permission.id)
-            if not user_permission:
+        for permission_data in data.permissions:
+            if permission_data.id not in user_permission_map:
                 raise HTTPException(
                     status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"Permission '{permission_key}' is not assigned to the user"
+                    detail=f"UserPermission với id '{permission_data.id}' không được gán cho user"
                 )
+            user_permission = user_permission_map[permission_data.id]
+            # Cập nhật các trường nếu có dữ liệu
+            if permission_data.record_enabled is not None:
+                user_permission.record_enabled = permission_data.record_enabled
+            if permission_data.is_denied is not None:
+                user_permission.is_denied = permission_data.is_denied
 
-            user_permission.is_active = permission_data.get("is_active", user_permission.is_active)
-            user_permission.is_denied = permission_data.get("is_denied", user_permission.is_denied)
-            if "target" not in permission_data:
-                raise HTTPException(
-                    status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Target not provided for permission: {permission_key}"
-                )
-            user_permission.target_id = None if permission_data["target"] == "all" else permission_data["target"]
+            updated_permissions.append(user_permission)
 
-            await self.repository.update(user_permission)
-            updated_permissions.append({
-                "permission": permission_key,
-                "status": "updated"
-            })
-
-        return updated_permissions
+        await self.repository.bulk_update(updated_permissions)
+        return [{"permission_id": up.permission_id, "status": "updated"} for up in updated_permissions]
 
     async def has_permission(self, user_id: int, permission_name: str, target_id: int = None) -> int:
         """

@@ -1,4 +1,5 @@
-from typing import Optional, Any, List
+from typing import Optional, List
+from app.model.user import User
 from .user_permission_service import UserPermissionService
 from .group_member_service import GroupMemberService
 from .group_permission_service import GroupPermissionService
@@ -11,9 +12,9 @@ class AuthorizationService:
         self.group_permission_service = GroupPermissionService()
         self.permission_service = PermissionService()
 
-    def check_permission(
+    async def check_permission(
         self,
-        user: Any,
+        user: User,
         permission_name: str,
         target_id: Optional[int] = None,
         is_user_owned: bool = False
@@ -28,7 +29,7 @@ class AuthorizationService:
         :return: True nếu người dùng hoặc nhóm có quyền, False nếu không
         """
         # 1. Kiểm tra quyền của người dùng
-        user_permission = self.user_permission_service.has_permission(user.id, permission_name, target_id)
+        user_permission = await self.user_permission_service.has_permission(user.id, permission_name, target_id)
         if user_permission < 0:
             return False
         elif user_permission > 0:
@@ -38,16 +39,16 @@ class AuthorizationService:
             return True
 
         # 2. Lấy danh sách các nhóm mà người dùng thuộc về
-        groups: List[Any] = self.group_member_service.find_groups_by_user(user)
+        groups: List[User] = self.group_member_service.find_groups_by_user(user)
 
         # 3. Kiểm tra quyền của từng nhóm
         for group in groups:
-            if self.group_permission_service.has_permission(group, permission_name, target_id):
+            if await self.group_permission_service.has_permission(group, permission_name, target_id):
                 return True
 
         # 4. Nếu không tìm thấy quyền hợp lệ, kiểm tra mặc định từ permission
-        permission = self.permission_service.get_permission_by_name(permission_name)
+        permission = await self.permission_service.get_permission_by_name(permission_name)
         if permission:
-            return permission.get_default()
+            return permission.default
         else:
             return False

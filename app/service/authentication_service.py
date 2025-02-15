@@ -1,6 +1,6 @@
 import os
 from fastapi import HTTPException
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta #, timezone
 from jose import jwt, JWTError
 from app.model.user import User
 from .user_service import UserService
@@ -24,7 +24,7 @@ class AuthenticationService:
         - Với access token, refresh_token_id (ID của refresh token) là bắt buộc.
         - Với refresh token, thêm claim reuseCount.
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.utcnow() # now = datetime.now(timezone.utc)
         if token_type == "access":
             ttl = ACCESS_TOKEN_EXPIRE
             if not refresh_token_id:
@@ -77,7 +77,8 @@ class AuthenticationService:
 
             # Kiểm tra thời gian hết hạn của token
             exp_timestamp = payload.get("exp")
-            if not exp_timestamp or datetime.fromtimestamp(exp_timestamp, tz=timezone.utc) < datetime.now(timezone.utc):
+            # if not exp_timestamp or datetime.fromtimestamp(exp_timestamp, tz=timezone.utc) < datetime.now(timezone.utc):
+            if not exp_timestamp or datetime.utcfromtimestamp(exp_timestamp) < datetime.utcnow():
                 raise HTTPException(status_code=401, detail="Token has expired")
 
         except JWTError:
@@ -113,7 +114,8 @@ class AuthenticationService:
         stored_token = await self.refresh_token_service.get_token(jti)
         if not stored_token:
             raise Exception("Refresh token not found or invalid.")
-        if stored_token.expires_at < datetime.now(timezone.utc):
+        # if stored_token.expires_at < datetime.now(timezone.utc):
+        if stored_token.expires_at < datetime.utcnow():
             raise Exception("Refresh token has expired.")
 
         # Lấy thông tin người dùng
@@ -143,8 +145,8 @@ class AuthenticationService:
         refresh_id = payload.get("refreshId")
         if not refresh_id:
             raise Exception("Refresh Token ID is missing in the Access Token.")
-
-        expires_at = datetime.fromtimestamp(exp_timestamp, tz=timezone.utc)
+        # expires_at = datetime.fromtimestamp(exp_timestamp, tz=timezone.utc)
+        expires_at = datetime.utcfromtimestamp(exp_timestamp)
         await self.blacklist_token_service.add_token(jti, expires_at)
         await self.refresh_token_service.delete_token(refresh_id)
 
@@ -174,7 +176,8 @@ class AuthenticationService:
         stored_token = await self.refresh_token_service.get_token(jti)
         if not stored_token or reuse_count > 12:
             raise Exception("Invalid or overused Refresh Token.")
-        if stored_token.expires_at < datetime.now(timezone.utc):
+        # if stored_token.expires_at < datetime.now(timezone.utc):
+        if stored_token.expires_at < datetime.utcnow():
             await self.refresh_token_service.delete_token(jti)
             raise Exception("Refresh Token has expired.")
 

@@ -40,8 +40,8 @@ app/
 │   ├── user_schema.py
 │   └── user_permission_schema.py
 ├── service/
-    ├── authentication_service.py
-    ├── authorization_service.py
+│   ├── authentication_service.py
+│   ├── authorization_service.py
 │   ├── category_service.py
 │   ├── group_service.py
 │   ├── group_member_service.py

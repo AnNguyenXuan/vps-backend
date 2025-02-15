@@ -1,7 +1,9 @@
 from fastapi import HTTPException, status
 from app.repository.group_member_repository import GroupMemberRepository
+from app.model.user import User
 from app.model.group_member import GroupMember
 from app.core.exceptions import DuplicateDataError
+from app.schema.group_member_schema import GroupMemberBase, GroupMemberCreate
 from .user_service import UserService
 from .group_service import GroupService
 
@@ -13,15 +15,14 @@ class GroupMemberService:
         self.user_service = UserService()
         self.group_service = GroupService()
 
-    async def add_user_to_group(self, data: dict) -> GroupMember:
+    async def add_user_to_group(self, data: GroupMemberCreate) -> GroupMember:
         """
         Thêm User vào Group.
         Dữ liệu đầu vào phải chứa 'userId' và 'groupId'.
         """
         # Lấy thông tin user và group, nếu không tìm thấy sẽ được UserService/GroupService raise HTTPException
-        user = await self.user_service.get_user_by_id(data["userId"])
-        group = await self.group_service.get_group_by_id(data["groupId"])
-
+        user = await self.user_service.get_user_by_id(data.user_id)
+        group = await self.group_service.get_group_by_id(data.group_id)
         group_member = GroupMember(user=user, group=group)
         try:
             group_member = await self.group_member_repository.add(group_member)
@@ -29,13 +30,12 @@ class GroupMemberService:
         except DuplicateDataError as e:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
-    async def remove_user_from_group(self, data: dict) -> None:
+    async def remove_user_from_group(self, data: GroupMemberBase) -> None:
         """
         Xóa thành viên khỏi Group.
         """
-        user = await self.user_service.get_user_by_id(data["userId"])
-        group = await self.group_service.get_group_by_id(data["groupId"])
-
+        user = await self.user_service.get_user_by_id(data.user_id)
+        group = await self.group_service.get_group_by_id(data.group_id)
         group_member = await self.group_member_repository.find_by_user_and_group(user, group)
         if not group_member:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Group member not found")
@@ -44,7 +44,7 @@ class GroupMemberService:
         if not success:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Failed to remove user from group")
 
-    async def find_groups_by_user(self, user) -> list:
+    async def find_groups_by_user(self, user: User) -> list:
         """
         Tìm danh sách Group mà User thuộc về.
         Trả về danh sách đối tượng Group.

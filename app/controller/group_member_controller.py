@@ -1,76 +1,37 @@
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, HTTPException, status
+from app.core.security import user_context, authorization
 from typing import List
-
-# Giả sử các schema (DTO) đã được định nghĩa với Pydantic, ví dụ:
-from app.schema.group_member_schema import GroupMemberRead  # DTO cho GroupMember
-from app.schema.group_schema import GroupRead              # DTO cho Group
-from app.schema.user_schema import UserRead                # DTO cho User
-
-# Import service và validator
+from app.schema.group_member_schema import GroupMemberBase, GroupMemberCreate, GroupMemberRead
+from app.schema.group_schema import GroupRead
+from app.schema.user_schema import UserRead
 from app.service.group_member_service import GroupMemberService
-# from app.service.authorization_service import AuthorizationService
-# from app.validators.group_member_validator import GroupMemberValidator
 
 
 
 group_member_service = GroupMemberService()
-# authorization_service = AuthorizationService()
-# group_member_validator = GroupMemberValidator()
 
-router = APIRouter(prefix="/api/group-member", tags=["GroupMember"])
+router = APIRouter(prefix="/group-member", tags=["GroupMember"])
 
 
-@router.post("/add", status_code=status.HTTP_201_CREATED)
-async def add_user_to_group(request: Request):
+@router.post("/add", status_code=status.HTTP_201_CREATED, response_model=GroupMemberRead)
+async def add_user_to_group(data: GroupMemberCreate):
     """
     Thêm user vào group.
-    Yêu cầu: 
-      - Người dùng phải tồn tại (user được gán vào request.state.user).
-      - Phải có quyền "manage_group_members".
-      - Dữ liệu JSON chứa các tham số cần thiết (ví dụ: userId, groupId).
     """
-    user = getattr(request.state, "user", None)
-    if not user:
-        raise HTTPException(status_code=401, detail="E2025")
-    # if not authorization_service.check_permission(user, "manage_group_members"):
-    #     raise HTTPException(status_code=403, detail="E2021")
+    # if not authorization.check_permission(user, "manage_group_members"):
+    #     raise HTTPException(status_code=403, detail="The user role is not allowed to perform this action")
+    return await group_member_service.add_user_to_group(data)
 
-    try:
-        data = await request.json()
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid JSON payload")
-
-    # validated_data = group_member_validator.validate_group_member_data(data)
-    group_member = await group_member_service.add_user_to_group(data) #.add_user_to_group(validated_data)
-    # Giả sử GroupMemberRead là Pydantic model với orm_mode=True để chuyển đổi entity sang DTO
-    return {
-        "message": "User added to group successfully",
-        "group_member": GroupMemberRead.from_orm(group_member)
-    }
-
-
-@router.post("/remove")
-async def remove_user_from_group(request: Request):
+@router.delete("/remove")
+async def remove_user_from_group(data: GroupMemberBase):
     """
     Xóa user khỏi group.
-    Yêu cầu:
-      - Người dùng hiện tại phải tồn tại và có quyền "manage_group_members".
-      - Dữ liệu JSON chứa ít nhất 2 trường 'userId' và 'groupId'.
     """
-    user = getattr(request.state, "user", None)
-    if not user:
-        raise HTTPException(status_code=401, detail="E2025")
-    # if not authorization_service.check_permission(user, "manage_group_members"):
-    #     raise HTTPException(status_code=403, detail="E2021")
-
-    try:
-        data = await request.json()
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid JSON payload")
-
-    if "userId" not in data or "groupId" not in data:
-        raise HTTPException(status_code=400, detail="Missing parameters")
-
+    # user_current = user_context.get()
+    # if user_current is None:
+    #     raise HTTPException(status_code=401, detail="E2025")
+    # if not authorization.check_permission(user, "manage_group_members"):
+    #     raise HTTPException(status_code=403, detail="The user role is not allowed to perform this action")
     try:
         await group_member_service.remove_user_from_group(data)
         return {"message": "User removed from group successfully"}
@@ -79,75 +40,60 @@ async def remove_user_from_group(request: Request):
 
 
 @router.get("/user/groups", response_model=List[GroupRead])
-async def get_groups_for_user_current(request: Request):
+async def get_groups_for_user_current():
     """
     Lấy danh sách các group mà user hiện tại thuộc về.
-    Yêu cầu: Người dùng phải tồn tại và có quyền "view_group_details".
+    Yêu cầu: Người dùng phải đang đăng nhập".
     """
-    user = getattr(request.state, "user", None)
-    if not user:
-        raise HTTPException(status_code=401, detail="E2025")
-    # if not authorization_service.check_permission(user, "view_group_details"):
-    #     raise HTTPException(status_code=403, detail="E2021")
-
-    groups = await group_member_service.find_groups_by_user(user)
-    return groups
+    user_current = user_context.get()
+    if not user_current:
+        raise HTTPException(status_code=401, detail="You have not logged in")
+    return  await group_member_service.find_groups_by_user(user_current)
 
 
 @router.get("/user/{id}/groups", response_model=List[GroupRead])
-async def get_groups_for_user(id: int, request: Request):
+async def get_groups_for_user(id: int):
     """
     Lấy danh sách các group mà user có id được chỉ định thuộc về.
-    Yêu cầu: Người dùng hiện tại phải tồn tại và có quyền "view_group_details".
+    Yêu cầu: Người dùng hiện tại phải đăng nhập và có quyền "view_group_details".
     """
-    user = getattr(request.state, "user", None)
-    if not user:
-        raise HTTPException(status_code=401, detail="E2025")
-    # if not authorization_service.check_permission(user, "view_group_details"):
-    #     raise HTTPException(status_code=403, detail="E2021")
-
+    # user_current = user_context.get()
+    # if not user_current:
+    #     raise HTTPException(status_code=401, detail="You have not logged in")
+    # if not authorization.check_permission(user, "view_group_details"):
+    #     raise HTTPException(status_code=403, detail="There is no access to this resource")
     groups = await group_member_service.get_groups_by_user(id)
     return groups
 
 
 @router.get("/group/{id}/users", response_model=List[UserRead])
-async def get_users_in_group(id: int, request: Request):
+async def get_users_in_group(id: int):
     """
     Lấy danh sách các user thuộc group có id được chỉ định.
     Yêu cầu: Người dùng hiện tại phải tồn tại và có quyền "view_group_details".
     """
-    user = getattr(request.state, "user", None)
-    if not user:
-        raise HTTPException(status_code=401, detail="E2025")
-    # if not authorization_service.check_permission(user, "view_group_details"):
-    #     raise HTTPException(status_code=403, detail="E2021")
-
+    # user_current = user_context.get()
+    # if not user_current:
+    #     raise HTTPException(status_code=401, detail="You have not logged in")
+    # if not authorization.check_permission(user, "view_group_details"):
+    #     raise HTTPException(status_code=403, detail="There is no access to this resource")
     users = await group_member_service.get_users_in_group(id)
     return users
 
 
 @router.post("/check")
-async def is_user_in_group(request: Request):
+async def is_user_in_group(data: GroupMemberBase):
     """
     Kiểm tra xem một user có thuộc group hay không.
     Yêu cầu:
       - Người dùng hiện tại phải tồn tại và có quyền "view_group_details".
       - Dữ liệu JSON chứa 'userId' và 'groupId'.
     """
-    user = getattr(request.state, "user", None)
-    if not user:
-        raise HTTPException(status_code=401, detail="E2025")
-    # if not authorization_service.check_permission(user, "view_group_details"):
-    #     raise HTTPException(status_code=403, detail="E2021")
-
-    try:
-        data = await request.json()
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid JSON payload")
-
-    if "userId" not in data or "groupId" not in data:
-        raise HTTPException(status_code=400, detail="Missing parameters")
-
+    # user_current = user_context.get()
+    # if not user_current:
+    #     raise HTTPException(status_code=401, detail="You have not logged in")
+    # if not authorization.check_permission(user, "view_group_details"):
+    #     raise HTTPException(status_code=403, detail="The user role is not allowed to perform this action")
     try:
         is_in_group = await group_member_service.is_user_in_group(data)
         return {"is_in_group": is_in_group}

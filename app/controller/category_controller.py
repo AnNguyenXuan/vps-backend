@@ -10,7 +10,7 @@ category_service = CategoryService()
 # authorization_service = AuthorizationService()
 # category_validator = CategoryValidator()
 
-router = APIRouter(prefix="/api/categories", tags=["Categories"])
+router = APIRouter(prefix="/categories", tags=["Categories"])
 
 
 @router.get("/", response_model=List[CategoryRead])

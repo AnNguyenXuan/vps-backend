@@ -5,7 +5,7 @@ from app.service.group_service import GroupService
 # from app.service.authorization_service import AuthorizationService  # Bạn cần tự hiện thực
 # from app.validators.group_validator import GroupValidator  # Bạn cần tự hiện thực
 
-router = APIRouter(prefix="/api/group", tags=["Group"])
+router = APIRouter(prefix="/group", tags=["Group"])
 
 # Khởi tạo các service
 group_service = GroupService()

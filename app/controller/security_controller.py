@@ -20,9 +20,11 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 @router.post("/login", response_model=TokenResponse)
 async def login(request: LoginRequest):
+    current_user = user_context.get()
+    if current_user is not None:
+        raise HTTPException(status_code=403, detail="You have already logged in")
     access_token, refresh_token = await authentication.login(request)
     return {"accessToken": access_token, "refreshToken": refresh_token}
-
 
 @router.post("/refresh-token", response_model=AccessTokenResponse)
 async def refresh_token(request: RefreshTokenRequest):
@@ -32,7 +34,6 @@ async def refresh_token(request: RefreshTokenRequest):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-
 @router.get("/logout", status_code=status.HTTP_200_OK)
 async def logout():
     try:
@@ -40,7 +41,6 @@ async def logout():
         return {"message": "Logout successful"}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
-
 
 @router.post("/change-password", status_code=status.HTTP_200_OK)
 async def change_password(request: ChangePasswordRequest):
@@ -53,7 +53,6 @@ async def change_password(request: ChangePasswordRequest):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-
 @router.post("/verify-password", status_code=status.HTTP_200_OK)
 async def verify_password(request: VerifyPasswordRequest):
     current_user = user_context.get()
@@ -61,8 +60,6 @@ async def verify_password(request: VerifyPasswordRequest):
         raise HTTPException(status_code=401, detail="You have not logged in")
     await user_service.verify_user_password(current_user.username, request.password)
     return {"message": "Password is correct"}
-
-
 
 @router.post("/refresh-refresh-token", response_model=RefreshTokenResponse)
 async def refresh_refresh_token(request: RefreshTokenRequest):

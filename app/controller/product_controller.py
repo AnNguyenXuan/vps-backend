@@ -5,7 +5,7 @@ from app.service.product_service import ProductService
 # from app.exception import AppException
 from app.schema.product_schema import ProductDto, ProductOptionDto
 
-router = APIRouter(prefix="/api/products", tags=["Product"])
+router = APIRouter(prefix="/products", tags=["Product"])
 
 product_service = ProductService()
 # authorization_service = AuthorizationService()

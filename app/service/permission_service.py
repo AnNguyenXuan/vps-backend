@@ -127,11 +127,18 @@ class PermissionService:
 
     async def get_permission_by_id(self, id: int) -> Permission:
         """Lấy quyền theo ID."""
-        return await self.permission_repository.find(id)
+        permission = await self.permission_repository.find(id)
+        if not permission:
+            raise HTTPException(404, "Permission not found.")
+        return permission
 
     async def get_permission_by_name(self, name: str) -> Permission:
         """Lấy quyền theo tên."""
-        return await self.permission_repository.find_one_by({"name": name})
+        permission = await self.permission_repository.find_one_by({"name": name})
+        if not permission:
+            raise HTTPException(404, "Permission "+name+" not found.")
+        return permission
+
 
     async def create_permission(self, name: str, description: str = None) -> Permission:
         """

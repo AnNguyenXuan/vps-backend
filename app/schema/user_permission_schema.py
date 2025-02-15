@@ -1,76 +1,109 @@
-from pydantic import BaseModel, Field, field_validator
+from typing import Union, Literal, List, Optional
+from pydantic import BaseModel, Field
 
-class UserPermissionBase(BaseModel):
+class PermissionDetail(BaseModel):
+    permission_id: int = Field(..., gt=0, description="Id quyền.")
+    target: Union[int, Literal["all"]] = Field(
+        ...,
+        description="ID mục tiêu (nếu có): phải là số nguyên dương hoặc giá trị 'all'."
+    )
+
+class UserPermissionsAssign(BaseModel):
+    """
+    Schema dùng để gán quyền cho người dùng (POST).
+    """
     user_id: int = Field(..., gt=0, description="ID của người dùng, phải là số nguyên dương.")
-    permission_id: int = Field(..., gt=0, description="ID của quyền, phải là số nguyên dương.")
-    target_id: int | None = Field(None, gt=0, description="ID mục tiêu (nếu có), phải là số nguyên dương hoặc None.")
-    is_active: bool = Field(True, description="Quyền có hiệu lực hay không.")
-    is_denied: bool = Field(False, description="Có từ chối quyền hay không.")
+    permissions: List[PermissionDetail] = Field(
+        ...,
+        description="Mapping giữa tên quyền và chi tiết quyền."
+    )
 
-    @field_validator("is_denied")
-    @classmethod
-    def validate_is_denied(cls, value, values):
-        if value and values.data.get("is_active", True):
-            raise ValueError("Không thể vừa kích hoạt (is_active=True) vừa từ chối quyền (is_denied=True).")
-        return value
-
-class UserPermissionCreate(UserPermissionBase):
-    """
-    Schema dùng để gán quyền cho người dùng.
-    """
-    model_config = {
-        "json_schema_extra": {
+    class Config:
+        schema_extra = {
             "example": {
-                "user_id": 5,
-                "permission_id": 3,
-                "target_id": 10,
-                "is_active": True,
-                "is_denied": False
+                "user_id": 4,
+                "permissions": [
+                    {"permission_id": 1, "target": 3},
+                    {"permission_id": 3, "target": "all"}
+                ]
             }
         }
-    }
 
-class UserPermissionUpdate(BaseModel):
+class PermissionDetailUpdate(BaseModel):
+    id: int = Field(..., gt=0, description="Id bản ghi.")
+    record_enabled: Optional[bool] = Field(
+        None, 
+        description="Cập nhật trạng thái quyền."
+    )
+    is_denied: Optional[bool] = Field(
+        None, 
+        description="Cập nhật trạng thái từ chối quyền."
+    )
+
+class UserPermissionsUpdate(BaseModel):
     """
-    Schema dùng để cập nhật quyền của người dùng.
+    Schema dùng để cập nhật quyền cho người dùng (PUT).
     """
-    is_active: bool | None = Field(None, description="Cập nhật trạng thái quyền.")
-    is_denied: bool | None = Field(None, description="Cập nhật trạng thái từ chối quyền.")
-    target_id: int | None = Field(None, gt=0, description="Cập nhật ID mục tiêu.")
+    user_id: int = Field(..., gt=0, description="ID của người dùng, phải là số nguyên dương.")
+    permissions: List[PermissionDetailUpdate] = Field(
+        ...,
+        description="Mapping giữa tên quyền và các trường cần cập nhật."
+    )
 
-    @field_validator("is_denied")
-    @classmethod
-    def validate_update_is_denied(cls, value, values):
-        if value and values.data.get("is_active", True):
-            raise ValueError("Không thể vừa kích hoạt (is_active=True) vừa từ chối quyền (is_denied=True).")
-        return value
-
-    model_config = {
-        "json_schema_extra": {
+    class Config:
+        schema_extra = {
             "example": {
-                "is_active": False,
-                "is_denied": True,
-                "target_id": 10
+                "user_id": 4,
+                "permissions": [
+                    {"id": 1, "record_enabled": True},
+                    {"id": 2, "is_denied": False}
+                ]
             }
         }
-    }
 
-class UserPermissionRead(UserPermissionBase):
+class UserPermissionsDelete(BaseModel):
     """
-    Schema dùng để đọc dữ liệu quyền của người dùng.
+    Schema dùng để thu hồi quyền của người dùng (DELETE).
     """
-    id: int
+    user_id: int = Field(..., gt=0, description="ID của người dùng, phải là số nguyên dương.")
+    permissions: List[str] = Field(
+        ...,
+        description="Danh sách tên quyền cần thu hồi."
+    )
 
-    model_config = {
-        "from_attributes": True,
-        "json_schema_extra": {
+    class Config:
+        schema_extra = {
             "example": {
-                "id": 1,
-                "user_id": 5,
-                "permission_id": 3,
-                "target_id": 10,
-                "is_active": True,
-                "is_denied": False
+                "user_id": 4,
+                "permissions": ["edit_user", "create_category", "edit_product"]
             }
         }
-    }
+
+class UserPermissionsReadDetail(BaseModel):
+    id: int = Field(..., description="ID của bản ghi UserPermission")
+    permission_id: int = Field(..., description="ID của quyền")
+    name: str = Field(..., description="Tên quyền (lấy từ permission.name)")
+    record_enabled: bool = Field(..., description="Bản ghi phân quyền này có được kích hoạt hay không")
+    is_denied: bool = Field(..., description="Quyền có bị từ chối hay không")
+    target: Union[int, Literal["all"]] = Field(
+        ...,
+        description="Target của quyền; nếu cột target_id là None thì trả về 'all', ngược lại trả về số tương ứng."
+    )
+
+class UserPermissionsRead(BaseModel):
+    user_id: int = Field(..., description="ID của người dùng")
+    permissions: List[UserPermissionsReadDetail] = Field(
+        ...,
+        description="Danh sách chi tiết quyền của người dùng"
+    )
+
+    class Config:
+        schema_extra = {
+            "example": {
+                "user_id": 4,
+                "permissions": [
+                    {"id": 1, "permission_id": 1, "name": "edit_user", "target": 3},
+                    {"id": 2, "permission_id": 3, "name": "create_category", "target": "all"}
+                ]
+            }
+        }
