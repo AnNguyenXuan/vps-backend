@@ -4,7 +4,13 @@ from app.model.user_permission import UserPermission
 from app.model.user import User
 from .user_service import UserService
 from .permission_service import PermissionService
-from app.schema.user_permission_schema import UserPermissionsAssign, UserPermissionsUpdate, UserPermissionsRead, UserPermissionsReadDetail
+from app.schema.user_permission_schema import (
+    UserPermissionsAssign, 
+    UserPermissionsUpdate, 
+    UserPermissionsRead, 
+    UserPermissionsReadDetail, 
+    UserPermissionsDelete
+)
 
 
 
@@ -27,7 +33,12 @@ class UserPermissionService:
         for permission_data in data.permissions:
             # Raise HTTPException nếu permission không tồn tại
             permission = await self.permission_service.get_permission_by_id(permission_data.permission_id)
-            user_permission = UserPermission(user_id=user.id, permission_id=permission.id, record_enabled=False, is_denied=False)
+            user_permission = UserPermission(
+                user_id=user.id, 
+                permission_id=permission.id, 
+                record_enabled=False, 
+                is_denied=False
+            )
             user_permission.target_id = None if permission_data.target == "all" else permission_data.target
 
             user_permissions_to_add.append(user_permission)
@@ -122,6 +133,40 @@ class UserPermissionService:
         await self.repository.bulk_update(updated_permissions)
         return [{"permission_id": up.permission_id, "status": "updated"} for up in updated_permissions]
 
+    async def delete_permissions(self, data: UserPermissionsDelete) -> None:
+        """
+        Xóa quyền của người dùng.
+        Dữ liệu đầu vào bao gồm:
+          - user_id: int
+          - permissions: list các permission id cần xóa.
+        """
+        # Lấy thông tin user; nếu không tồn tại, UserService sẽ raise HTTPException
+        user = await self.user_service.get_user_by_id(data.user_id)
+        
+        # Lấy tất cả các quyền đã được gán cho user
+        user_permissions = await self.repository.find_by_user_id(user.id)
+        
+        # Kiểm tra xem user có được gán các permission_id cần thu hồi hay không
+        assigned_permission_ids = {up.permission_id for up in user_permissions}
+        requested_permission_ids = set(data.permissions)
+        missing_permissions = requested_permission_ids - assigned_permission_ids
+        if missing_permissions:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"User không có các quyền với permission_id: {', '.join(map(str, missing_permissions))}"
+            )
+        
+        # Lọc ra các bản ghi UserPermission cần xóa (có thể có nhiều bản ghi cho cùng 1 permission_id nếu khác target)
+        user_permissions_to_delete = [up for up in user_permissions if up.permission_id in requested_permission_ids]
+        
+        # Thực hiện xóa hàng loạt
+        failed_deletes = await self.repository.bulk_delete(user_permissions_to_delete)
+        if failed_deletes:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Không thể thu hồi quyền với id: {', '.join(str(up.id) for up in failed_deletes)}"
+            )
+
     async def has_permission(self, user_id: int, permission_name: str, target_id: int = None) -> int:
         """
         Kiểm tra quyền của người dùng.
@@ -139,23 +184,3 @@ class UserPermissionService:
             if up.target_id == target_id:
                 return -1 if up.is_denied else 1
         return 0
-
-    async def delete_permissions(self, data: dict) -> None:
-        """
-        Xóa quyền của người dùng.
-        Dữ liệu đầu vào bao gồm:
-          - user_id: int
-          - permissions: list các permission name cần xóa.
-        """
-        user = await self.user_service.get_user_by_id(data.get("user_id"))
-        user_permissions_to_delete = []
-        for permission_name in data.get("permissions", []):
-            permission = await self.permission_service.get_permission_by_name(permission_name)
-            if not permission:
-                continue  # Bỏ qua nếu không tìm thấy quyền
-
-            user_permission = await self.repository.find_one_by_user_and_permission(user.id, permission.id)
-            if user_permission:
-                user_permissions_to_delete.append(user_permission)
-
-        await self.repository.bulk_delete(user_permissions_to_delete)

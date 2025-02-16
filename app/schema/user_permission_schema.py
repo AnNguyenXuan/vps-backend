@@ -66,7 +66,7 @@ class UserPermissionsDelete(BaseModel):
     Schema dùng để thu hồi quyền của người dùng (DELETE).
     """
     user_id: int = Field(..., gt=0, description="ID của người dùng, phải là số nguyên dương.")
-    permissions: List[str] = Field(
+    permissions: List[int] = Field(
         ...,
         description="Danh sách tên quyền cần thu hồi."
     )
@@ -75,7 +75,7 @@ class UserPermissionsDelete(BaseModel):
         schema_extra = {
             "example": {
                 "user_id": 4,
-                "permissions": ["edit_user", "create_category", "edit_product"]
+                "permissions": [1, 2, 3]
             }
         }
 

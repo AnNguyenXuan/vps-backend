@@ -68,14 +68,13 @@ class UserPermissionRepository:
         Sử dụng session.merge để đảm bảo đối tượng được cập nhật đúng trong session mới.
         """
         async with AsyncSessionLocal() as session:
-            try:
-                for up in user_permissions:
-                    session.merge(up)
-                await session.commit()
-                print("ha ha ha ha ha ha ha ha ha ha ha ha ha ha ha ha ha ha")
-            except SQLAlchemyError:
-                await session.rollback()
-                raise
+            # try:
+            for up in user_permissions:
+                await session.merge(up)
+            await session.commit()
+            # except SQLAlchemyError:
+            #     await session.rollback()
+            #     raise
 
     async def bulk_delete(self, user_permissions: list[UserPermission]) -> list[UserPermission]:
         """

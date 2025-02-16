@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Request, status
 from app.core.security import user_context, authorization
 from app.service.user_permission_service import UserPermissionService
 from app.service.user_service import UserService
-from app.schema.user_permission_schema import UserPermissionsAssign, UserPermissionsUpdate, UserPermissionsRead
+from app.schema.user_permission_schema import UserPermissionsAssign, UserPermissionsUpdate, UserPermissionsRead, UserPermissionsDelete
 
 
 
@@ -26,7 +26,6 @@ async def get_permissions_by_user(user_id: int):
         raise HTTPException(status_code=401, detail="You have not logged in")
     # if not authorization_service.check_permission(user, "view_permissions"):
     #     raise HTTPException(status_code=403, detail="E2021")
-    # try:
     target_user = await user_service.get_user_by_id(user_id)
     return await user_permission_service.get_permissions_by_user(target_user)
 
@@ -54,11 +53,7 @@ async def assign_permission(user_permission: UserPermissionsAssign):
         raise HTTPException(status_code=401, detail="You have not logged in")
     # if not authorization_service.check_permission(user, "create_permission"):
     #     raise HTTPException(status_code=403, detail="E2021")
-    # try:
-    assigned_permissions = await user_permission_service.assign_permissions(user_permission)
-    return assigned_permissions
-    # except Exception:
-    #     raise HTTPException(status_code=500, detail="An unexpected error occurred.")
+    return await user_permission_service.assign_permissions(user_permission)
 
 @router.put("")
 async def update_permission(data: UserPermissionsUpdate):
@@ -89,23 +84,21 @@ async def update_permission(data: UserPermissionsUpdate):
         raise HTTPException(status_code=401, detail="You have not logged in")
     # if not authorization_service.check_permission(user, "edit_permission"):
     #     raise HTTPException(status_code=403, detail="E2021")
-    updated_permissions = await user_permission_service.update_permission(data)
-    return updated_permissions
-
+    return user_permission_service.update_permission(data)
 
 @router.delete("")
-async def delete_permission(request: Request):
+async def delete_permission(data: UserPermissionsDelete):
     """
     Xóa quyền của người dùng.
     
     Yêu cầu:
-      - Thông tin user phải có trong `request.state.user`.
+      - Người dùng cần đăng nhập để thực hiện hành động này.
       - User hiện tại phải có quyền "delete_permission".
       - Payload JSON phải chứa: user_id và danh sách permission names cần xóa, ví dụ:
       
             {
                 "user_id": 123,
-                "permissions": ["permission_name_1", "permission_name_2"]
+                "permissions": [1, 2]
             }
     """
     user_current = user_context.get()
@@ -113,13 +106,5 @@ async def delete_permission(request: Request):
         raise HTTPException(status_code=401, detail="You have not logged in")
     # if not authorization_service.check_permission(user, "delete_permission"):
     #     raise HTTPException(status_code=403, detail="E2021")
-    try:
-        data = await request.json()
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid JSON payload")
-    
-    # try:
     await user_permission_service.delete_permissions(data)
     return {"message": "Permissions deleted successfully."}
-    # except AppException as e:
-    #     raise HTTPException(status_code=400, detail=str(e))
