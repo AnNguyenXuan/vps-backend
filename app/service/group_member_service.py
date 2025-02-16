@@ -23,7 +23,7 @@ class GroupMemberService:
         # Lấy thông tin user và group, nếu không tìm thấy sẽ được UserService/GroupService raise HTTPException
         user = await self.user_service.get_user_by_id(data.user_id)
         group = await self.group_service.get_group_by_id(data.group_id)
-        group_member = GroupMember(user=user, group=group)
+        group_member = GroupMember(user_id=user.id, group_id=group.id)
         try:
             group_member = await self.group_member_repository.add(group_member)
             return group_member

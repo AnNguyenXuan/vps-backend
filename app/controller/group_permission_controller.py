@@ -15,22 +15,6 @@ group_service = GroupService()
 group_permission_service = GroupPermissionService()
 
 
-@router.post("", status_code=status.HTTP_201_CREATED)
-async def assign_permission(payload: GroupPermissionsAssign):
-    """
-    Gán (assign) danh sách quyền cho Group.
-    """
-    user_current = user_context.get()
-    if not user_current:
-        raise HTTPException(status_code=401, detail="You have not logged in")
-    
-    # Kiểm tra quyền
-    # if not authorization.check_permission(user_current, "create_permission"):
-    #     raise HTTPException(status_code=403, detail="E2021")
-
-    return await group_permission_service.assign_permissions(payload)
-
-
 @router.get("/{group_id}", response_model=GroupPermissionsRead)
 async def get_permissions_by_group(group_id: int):
     """
@@ -48,7 +32,23 @@ async def get_permissions_by_group(group_id: int):
     return await group_permission_service.get_permissions_by_group(target_group)
 
 
-@router.put("", response_model=GroupPermissionsRead)
+@router.post("", status_code=status.HTTP_201_CREATED)
+async def assign_permission(payload: GroupPermissionsAssign):
+    """
+    Gán (assign) danh sách quyền cho Group.
+    """
+    user_current = user_context.get()
+    if not user_current:
+        raise HTTPException(status_code=401, detail="You have not logged in")
+    
+    # Kiểm tra quyền
+    # if not authorization.check_permission(user_current, "create_permission"):
+    #     raise HTTPException(status_code=403, detail="E2021")
+
+    return await group_permission_service.assign_permissions(payload)
+
+
+@router.put("") # , response_model=GroupPermissionsRead
 async def update_permission(payload: GroupPermissionsUpdate):
     """
     Cập nhật quyền của Group.

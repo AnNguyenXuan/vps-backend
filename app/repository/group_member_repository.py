@@ -1,7 +1,10 @@
 from sqlalchemy.future import select
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from sqlalchemy.orm import joinedload  # Import joinedload
 from app.model.group_member import GroupMember
+from app.model.group import Group  # Import Group model
+from app.model.user import User  # Import User model
 from app.core.database import AsyncSessionLocal
 from app.core.exceptions import DuplicateDataError
 
@@ -47,23 +50,27 @@ class GroupMemberRepository:
             )
             return result.scalar_one_or_none()
 
-    async def find_group_members_by_user(self, user) -> list:
+    async def find_group_members_by_user(self, user) -> list[GroupMember]:
         """
         Tìm danh sách GroupMember (bao gồm cả Group) mà User thuộc về.
         """
         async with AsyncSessionLocal() as session:
             result = await session.execute(
-                select(GroupMember).where(GroupMember.user_id == user.id)
+                select(GroupMember)
+                .where(GroupMember.user_id == user.id)
+                .options(joinedload(GroupMember.group))  # 🔹 Load group để tránh DetachedInstanceError
             )
             return result.scalars().all()
 
-    async def find_group_members_by_group(self, group) -> list:
+    async def find_group_members_by_group(self, group) -> list[GroupMember]:
         """
         Tìm danh sách GroupMember (bao gồm cả User) của một Group.
         """
         async with AsyncSessionLocal() as session:
             result = await session.execute(
-                select(GroupMember).where(GroupMember.group_id == group.id)
+                select(GroupMember)
+                .where(GroupMember.group_id == group.id)
+                .options(joinedload(GroupMember.user))  # 🔹 Load user để tránh DetachedInstanceError
             )
             return result.scalars().all()
 

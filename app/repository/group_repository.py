@@ -17,7 +17,7 @@ class GroupRepository:
                 await db.rollback()
                 raise DuplicateDataError("Group name already exists")
 
-    async def get_group_by_id(self, group_id: int):
+    async def get_group_by_id(self, group_id: int) -> Group:
         """Lấy nhóm theo ID"""
         async with AsyncSessionLocal() as db:
             result = await db.execute(select(Group).where(Group.id == group_id))

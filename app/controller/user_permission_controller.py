@@ -84,7 +84,7 @@ async def update_permission(data: UserPermissionsUpdate):
         raise HTTPException(status_code=401, detail="You have not logged in")
     # if not authorization_service.check_permission(user, "edit_permission"):
     #     raise HTTPException(status_code=403, detail="E2021")
-    return user_permission_service.update_permission(data)
+    return await user_permission_service.update_permission(data)
 
 @router.delete("")
 async def delete_permission(data: UserPermissionsDelete):

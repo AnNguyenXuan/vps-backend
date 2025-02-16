@@ -22,13 +22,11 @@ class GroupMemberRead(GroupMemberBase):
     """
     Schema dùng để đọc dữ liệu của GroupMember.
     """
-    id: int
 
     model_config = {
         "from_attributes": True,
         "json_schema_extra": {
             "example": {
-                "id": 1,
                 "user_id": 10,
                 "group_id": 2
             }
