@@ -96,7 +96,7 @@ JWT_AUDIENCE=https://shop.example.com
 Bạn có thể sử dụng lệnh sau để thực hiện toàn bộ quá trình khởi tạo hệ thống:
 
 ```bash
-python app/core/cmd.py init_all
+python app/core/cmd init_all
 ```
 
 Lệnh này sẽ:
