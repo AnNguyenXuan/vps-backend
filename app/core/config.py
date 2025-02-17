@@ -7,7 +7,7 @@ load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 # Cấu hình bảo mật
-SECRET_KEY = os.getenv("JWT_SECRET", "your_default_secret")
+SECRET_KEY = os.getenv("JWT_SECRET")
 ALGORITHM = "HS256"
 
 ACCESS_TOKEN_EXPIRE = 60*int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 60))  # 1 giờ

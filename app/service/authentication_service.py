@@ -28,11 +28,11 @@ class AuthenticationService:
         if token_type == "access":
             ttl = ACCESS_TOKEN_EXPIRE
             if not refresh_token_id:
-                raise ValueError("Refresh Token ID is required for access tokens.")
+                raise HTTPException(status_code=400, detail="Refresh Token ID is required for access tokens.")
         elif token_type == "refresh":
             ttl = REFRESH_TOKEN_EXPIRE
         else:
-            raise ValueError('Invalid token type. Allowed values are "access" and "refresh".')
+            raise HTTPException(status_code=400, detail='Invalid token type. Allowed values are "access" and "refresh".')
 
         exp = now + timedelta(seconds=ttl)
         jti = os.urandom(32).hex()  # Tạo id duy nhất cho token
@@ -80,7 +80,6 @@ class AuthenticationService:
             # if not exp_timestamp or datetime.fromtimestamp(exp_timestamp, tz=timezone.utc) < datetime.now(timezone.utc):
             if not exp_timestamp or datetime.utcfromtimestamp(exp_timestamp) < datetime.utcnow():
                 raise HTTPException(status_code=401, detail="Token has expired")
-
         except JWTError:
             raise HTTPException(status_code=401, detail="Invalid token")
 
@@ -105,7 +104,7 @@ class AuthenticationService:
         """
         payload = await self.validate_token(refresh_token_string)
         if payload.get("type") != "refresh":
-            raise Exception("Invalid token type for access token refresh.")
+            raise HTTPException(status_code=400, detail="Invalid token type for access token refresh.")
 
         jti = payload.get("jti")
         user_id = payload.get("uid")
@@ -113,15 +112,14 @@ class AuthenticationService:
         # Kiểm tra Refresh Token trong DB
         stored_token = await self.refresh_token_service.get_token(jti)
         if not stored_token:
-            raise Exception("Refresh token not found or invalid.")
-        # if stored_token.expires_at < datetime.now(timezone.utc):
+            raise HTTPException(status_code=401, detail="Refresh token not found or invalid.")
         if stored_token.expires_at < datetime.utcnow():
-            raise Exception("Refresh token has expired.")
+            raise HTTPException(status_code=401, detail="Refresh token has expired.")
 
         # Lấy thông tin người dùng
         user = await self.user_service.get_user_by_id(user_id)
         if not user:
-            raise Exception("User not found.")
+            raise HTTPException(status_code=404, detail="User not found.")
 
         # Tạo Access Token mới, sử dụng refresh token id từ refresh token hiện tại
         return await self.create_token(user, "access", refresh_token_id=jti)
@@ -144,8 +142,7 @@ class AuthenticationService:
         exp_timestamp = payload.get("exp")
         refresh_id = payload.get("refreshId")
         if not refresh_id:
-            raise Exception("Refresh Token ID is missing in the Access Token.")
-        # expires_at = datetime.fromtimestamp(exp_timestamp, tz=timezone.utc)
+            raise HTTPException(status_code=400, detail="Refresh Token ID is missing in the Access Token.")
         expires_at = datetime.utcfromtimestamp(exp_timestamp)
         await self.blacklist_token_service.add_token(jti, expires_at)
         await self.refresh_token_service.delete_token(refresh_id)
@@ -166,7 +163,7 @@ class AuthenticationService:
         """
         payload = await self.validate_token(refresh_token_string)
         if payload.get("type") != "refresh":
-            raise Exception("Invalid token type for refresh.")
+            raise HTTPException(status_code=400, detail="Invalid token type for refresh.")
 
         jti = payload.get("jti")
         reuse_count = payload.get("reuseCount", 0)
@@ -175,15 +172,14 @@ class AuthenticationService:
         # Kiểm tra tính hợp lệ của refresh token trong DB
         stored_token = await self.refresh_token_service.get_token(jti)
         if not stored_token or reuse_count > 12:
-            raise Exception("Invalid or overused Refresh Token.")
-        # if stored_token.expires_at < datetime.now(timezone.utc):
+            raise HTTPException(status_code=401, detail="Invalid or overused Refresh Token.")
         if stored_token.expires_at < datetime.utcnow():
             await self.refresh_token_service.delete_token(jti)
-            raise Exception("Refresh Token has expired.")
+            raise HTTPException(status_code=401, detail="Refresh Token has expired.")
 
         user = await self.user_service.get_user_by_id(user_id)
         if not user:
-            raise Exception("User not found.")
+            raise HTTPException(status_code=404, detail="User not found.")
 
         # Tạo refresh token mới với reuseCount tăng thêm 1
         new_refresh = await self.create_token(user, "refresh", reuse_count=reuse_count + 1)

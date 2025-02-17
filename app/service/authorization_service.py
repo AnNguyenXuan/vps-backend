@@ -29,33 +29,26 @@ class AuthorizationService:
         :return: True nếu người dùng hoặc nhóm có quyền, False nếu không
         """
         # 1. Kiểm tra quyền của người dùng
-        print(0)
         user_permission = await self.user_permission_service.has_permission(user.id, permission_name, target_id)
         if user_permission < 0:
-            print(1)
             return False
         elif user_permission > 0:
-            print(3)
             return True
 
         if is_user_owned:
-            print(4)
             return True
 
         # 2. Lấy danh sách các nhóm mà người dùng thuộc về
         groups = await self.group_member_service.find_groups_by_user(user)
-        
+
         # 3. Kiểm tra quyền của từng nhóm
         for group in groups:
             if await self.group_permission_service.has_permission(group.id, permission_name, target_id)>0:
-                print(5)
                 return True
 
         # 4. Nếu không tìm thấy quyền hợp lệ, kiểm tra mặc định từ permission
         permission = await self.permission_service.get_permission_by_name(permission_name)
         if permission:
-            print(6)
             return permission.default
         else:
-            print(7)
             return False
