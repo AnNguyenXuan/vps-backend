@@ -123,6 +123,9 @@ Truy cập ứng dụng tại: [http://127.0.0.1:8000](http://127.0.0.1:8000)
 - **Không sử dụng `Depends(get_db)` trong controller:**  
   Việc quản lý kết nối cơ sở dữ liệu được thực hiện trong repository thông qua các context manager (`async with AsyncSessionLocal() as session`). Điều này giữ cho controller "sạch" và tập trung vào xử lý request/response, đồng thời đảm bảo việc quản lý session được thực hiện chặt chẽ và tập trung.
 
+- **Sử dụng user_context để lưu thông tin người dùng hiện tại:**  
+  Thay vì phải truyền thông tin người dùng qua các tầng hoặc đối số hàm, sử dụng user_context để lưu thông tin người dùng đang đăng nhập. Điều này giúp việc truy cập vào dữ liệu người dùng trở nên đơn giản và không phụ thuộc vào việc truyền tham số, đồng thời đảm bảo rằng ở mọi tầng của ứng dụng, thông tin người dùng có thể được truy cập một cách dễ dàng và an toàn mà không làm giảm tính rõ ràng của code.
+  
 ### Bảo mật và phân quyền
 
 - **Xác thực bằng JWT:**  
