@@ -8,7 +8,7 @@ from app.core.database import AsyncSessionLocal
 
 
 class GroupPermissionRepository:
-    async def find_group_permission(self, group_id: int, permission_name: str) -> list:
+    async def find_group_permission(self, group_id: int, permission_name: str) -> list[GroupPermission]:
         """
         Lấy danh sách GroupPermission theo group_id và permission_name,
         ưu tiên bản ghi có target_id = None (sắp xếp theo target_id ASC).
@@ -35,7 +35,7 @@ class GroupPermissionRepository:
             )
             return result.scalars().all()
 
-    async def bulk_insert(self, group_permissions: list) -> None:
+    async def bulk_insert(self, group_permissions: list[GroupPermission]) -> None:
         """
         Thêm nhiều bản ghi GroupPermission cùng lúc, bỏ qua các bản ghi trùng lặp dựa theo unique constraint.
         """

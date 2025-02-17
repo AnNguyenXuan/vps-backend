@@ -2,6 +2,7 @@ from fastapi import HTTPException, status
 from app.repository.group_permission_repository import GroupPermissionRepository
 from app.model.group_permission import GroupPermission
 from app.model.group import Group
+from app.model.permission import Permission
 from .group_service import GroupService
 from .permission_service import PermissionService
 from app.schema.group_permission_schema import (
@@ -49,7 +50,7 @@ class GroupPermissionService:
         await self.repository.bulk_insert(group_permissions_to_add)
         return assigned_permissions
 
-    async def set_permission(self, group, permissions: list) -> list:
+    async def set_permission(self, group: Group, permissions: list[Permission]) -> list:
         """
         Khởi tạo quyền cho group.
         """
@@ -60,9 +61,9 @@ class GroupPermissionService:
                 raise ValueError("Each item in permissions array must be an instance of Permission.")
 
             group_permission = GroupPermission()
-            group_permission.group = group
-            group_permission.permission = permission
-            group_permission.is_active = True
+            group_permission.group_id = group.id
+            group_permission.permission_id = permission.id
+            group_permission.record_enabled = True
             group_permission.is_denied = False
             group_permission.target_id = None
 
@@ -151,13 +152,13 @@ class GroupPermissionService:
                 detail=f"Không thể thu hồi quyền với id: {', '.join(str(gp.id) for gp in failed_deletes)}"
             )
 
-    async def has_permission(self, group_id: int, permission_name: str, target_id: int = None) -> int:
+    async def has_permission(self, group_id: int, permission_name: str, target_id: int | None = None) -> int:
         """
         Kiểm tra quyền của group.
         """
         group_permissions = await self.repository.find_group_permission(group_id, permission_name)
         for gp in group_permissions:
-            if not gp.is_active:
+            if not gp.record_enabled:
                 continue
             if gp.target_id is None:
                 return -1 if gp.is_denied else 1

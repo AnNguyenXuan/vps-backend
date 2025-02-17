@@ -25,8 +25,8 @@ async def get_permissions_by_group(group_id: int):
         raise HTTPException(status_code=401, detail="You have not logged in")
     
     # Kiểm tra quyền
-    # if not authorization.check_permission(user_current, "view_permissions"):
-    #     raise HTTPException(status_code=403, detail="E2021")
+    if not await authorization.check_permission(user_current, "view_permissions"):
+        raise HTTPException(status_code=403, detail="The user role is not allowed to perform this action")
 
     target_group = await group_service.get_group_by_id(group_id)
     return await group_permission_service.get_permissions_by_group(target_group)
@@ -42,8 +42,8 @@ async def assign_permission(payload: GroupPermissionsAssign):
         raise HTTPException(status_code=401, detail="You have not logged in")
     
     # Kiểm tra quyền
-    # if not authorization.check_permission(user_current, "create_permission"):
-    #     raise HTTPException(status_code=403, detail="E2021")
+    if not await authorization.check_permission(user_current, "create_permission"):
+        raise HTTPException(status_code=403, detail="The user role is not allowed to perform this action")
 
     return await group_permission_service.assign_permissions(payload)
 
@@ -58,8 +58,8 @@ async def update_permission(payload: GroupPermissionsUpdate):
         raise HTTPException(status_code=401, detail="You have not logged in")
     
     # Kiểm tra quyền
-    # if not authorization.check_permission(user_current, "edit_permission"):
-    #     raise HTTPException(status_code=403, detail="E2021")
+    if not await authorization.check_permission(user_current, "edit_permission"):
+        raise HTTPException(status_code=403, detail="The user role is not allowed to perform this action")
 
     return await group_permission_service.update_permission(payload)
 
@@ -74,7 +74,7 @@ async def delete_permission(payload: GroupPermissionsDelete):
         raise HTTPException(status_code=401, detail="You have not logged in")
     
     # Kiểm tra quyền
-    # if not authorization.check_permission(user_current, "delete_permission"):
-    #     raise HTTPException(status_code=403, detail="E2021")
+    if not await authorization.check_permission(user_current, "delete_permission"):
+        raise HTTPException(status_code=403, detail="The user role is not allowed to perform this action")
 
     await group_permission_service.delete_permissions(payload)

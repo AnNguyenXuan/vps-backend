@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, HTTPException, status
 from app.core.security import user_context, authorization
 from app.service.user_permission_service import UserPermissionService
 from app.service.user_service import UserService
@@ -24,8 +24,8 @@ async def get_permissions_by_user(user_id: int):
     user_current = user_context.get()
     if not user_current:
         raise HTTPException(status_code=401, detail="You have not logged in")
-    # if not authorization_service.check_permission(user, "view_permissions"):
-    #     raise HTTPException(status_code=403, detail="E2021")
+    if not await authorization.check_permission(user_current, "view_permissions"):
+        raise HTTPException(status_code=403, detail="The user role is not allowed to perform this action")
     target_user = await user_service.get_user_by_id(user_id)
     return await user_permission_service.get_permissions_by_user(target_user)
 
@@ -51,8 +51,8 @@ async def assign_permission(user_permission: UserPermissionsAssign):
     user_current = user_context.get()
     if not user_current:
         raise HTTPException(status_code=401, detail="You have not logged in")
-    # if not authorization_service.check_permission(user, "create_permission"):
-    #     raise HTTPException(status_code=403, detail="E2021")
+    if not await authorization.check_permission(user_current, "create_permission"):
+        raise HTTPException(status_code=403, detail="The user role is not allowed to perform this action")
     return await user_permission_service.assign_permissions(user_permission)
 
 @router.put("")
@@ -82,8 +82,8 @@ async def update_permission(data: UserPermissionsUpdate):
     user_current = user_context.get()
     if not user_current:
         raise HTTPException(status_code=401, detail="You have not logged in")
-    # if not authorization_service.check_permission(user, "edit_permission"):
-    #     raise HTTPException(status_code=403, detail="E2021")
+    if not await authorization.check_permission(user_current, "edit_permission"):
+        raise HTTPException(status_code=403, detail="The user role is not allowed to perform this action")
     return await user_permission_service.update_permission(data)
 
 @router.delete("")
@@ -104,7 +104,7 @@ async def delete_permission(data: UserPermissionsDelete):
     user_current = user_context.get()
     if not user_current:
         raise HTTPException(status_code=401, detail="You have not logged in")
-    # if not authorization_service.check_permission(user, "delete_permission"):
-    #     raise HTTPException(status_code=403, detail="E2021")
+    if not await authorization.check_permission(user_current, "delete_permission"):
+        raise HTTPException(status_code=403, detail="The user role is not allowed to perform this action")
     await user_permission_service.delete_permissions(data)
     return {"message": "Permissions deleted successfully."}

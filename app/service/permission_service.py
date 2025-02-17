@@ -113,7 +113,7 @@ class PermissionService:
             if perm.name not in static_permissions:
                 await self.permission_repository.delete(perm)
 
-    async def get_all_permissions(self) -> list:
+    async def get_all_permissions(self) -> list[Permission]:
         """Trả về danh sách tất cả các quyền (Permission)."""
         return await self.permission_repository.find_all()
 

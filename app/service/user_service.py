@@ -43,10 +43,10 @@ class UserService:
         hashed_password = pwd_context.hash(password)
         new_user = User(username="superadmin", password=hashed_password)
         try:
-            await self.repository.create_user(new_user)
-            return True
+            superadmin = await self.repository.create_user(new_user)
+            return superadmin
         except DuplicateDataError:
-            return False
+            return None
 
     async def change_superadmin_password(self, new_password: str):
         """Thay đổi mật khẩu superadmin"""

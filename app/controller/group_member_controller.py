@@ -18,8 +18,11 @@ async def add_user_to_group(data: GroupMemberCreate):
     """
     Thêm user vào group.
     """
-    # if not authorization.check_permission(user, "manage_group_members"):
-    #     raise HTTPException(status_code=403, detail="The user role is not allowed to perform this action")
+    user_current = user_context.get()
+    if user_current is None:
+        raise HTTPException(status_code=401, detail="You have not logged in")
+    if not await authorization.check_permission(user_current, "manage_group_members"):
+        raise HTTPException(status_code=403, detail="The user role is not allowed to perform this action")
     return await group_member_service.add_user_to_group(data)
 
 @router.delete("/remove")
@@ -27,11 +30,11 @@ async def remove_user_from_group(data: GroupMemberBase):
     """
     Xóa user khỏi group.
     """
-    # user_current = user_context.get()
-    # if user_current is None:
-    #     raise HTTPException(status_code=401, detail="E2025")
-    # if not authorization.check_permission(user, "manage_group_members"):
-    #     raise HTTPException(status_code=403, detail="The user role is not allowed to perform this action")
+    user_current = user_context.get()
+    if user_current is None:
+        raise HTTPException(status_code=401, detail="You have not logged in")
+    if not await authorization.check_permission(user_current, "manage_group_members"):
+        raise HTTPException(status_code=403, detail="The user role is not allowed to perform this action")
     try:
         await group_member_service.remove_user_from_group(data)
         return {"message": "User removed from group successfully"}
@@ -57,11 +60,11 @@ async def get_groups_for_user(id: int):
     Lấy danh sách các group mà user có id được chỉ định thuộc về.
     Yêu cầu: Người dùng hiện tại phải đăng nhập và có quyền "view_group_details".
     """
-    # user_current = user_context.get()
-    # if not user_current:
-    #     raise HTTPException(status_code=401, detail="You have not logged in")
-    # if not authorization.check_permission(user, "view_group_details"):
-    #     raise HTTPException(status_code=403, detail="There is no access to this resource")
+    user_current = user_context.get()
+    if not user_current:
+        raise HTTPException(status_code=401, detail="You have not logged in")
+    if not await authorization.check_permission(user_current, "view_group_details"):
+        raise HTTPException(status_code=403, detail="You have no access to this resource")
     groups = await group_member_service.get_groups_by_user(id)
     return groups
 
@@ -72,11 +75,11 @@ async def get_users_in_group(id: int):
     Lấy danh sách các user thuộc group có id được chỉ định.
     Yêu cầu: Người dùng hiện tại phải tồn tại và có quyền "view_group_details".
     """
-    # user_current = user_context.get()
-    # if not user_current:
-    #     raise HTTPException(status_code=401, detail="You have not logged in")
-    # if not authorization.check_permission(user, "view_group_details"):
-    #     raise HTTPException(status_code=403, detail="There is no access to this resource")
+    user_current = user_context.get()
+    if not user_current:
+        raise HTTPException(status_code=401, detail="You have not logged in")
+    if not await authorization.check_permission(user_current, "view_group_details"):
+        raise HTTPException(status_code=403, detail="You have no access to this resource")
     users = await group_member_service.get_users_in_group(id)
     return users
 
@@ -89,11 +92,11 @@ async def is_user_in_group(data: GroupMemberBase):
       - Người dùng hiện tại phải tồn tại và có quyền "view_group_details".
       - Dữ liệu JSON chứa 'userId' và 'groupId'.
     """
-    # user_current = user_context.get()
-    # if not user_current:
-    #     raise HTTPException(status_code=401, detail="You have not logged in")
-    # if not authorization.check_permission(user, "view_group_details"):
-    #     raise HTTPException(status_code=403, detail="The user role is not allowed to perform this action")
+    user_current = user_context.get()
+    if not user_current:
+        raise HTTPException(status_code=401, detail="You have not logged in")
+    if not await authorization.check_permission(user_current, "view_group_details"):
+        raise HTTPException(status_code=403, detail="The user role is not allowed to perform this action")
     try:
         is_in_group = await group_member_service.is_user_in_group(data)
         return {"is_in_group": is_in_group}

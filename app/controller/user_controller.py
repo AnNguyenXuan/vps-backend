@@ -17,8 +17,8 @@ async def list_users(
     user_current = user_context.get()
     if not user_current:
         raise HTTPException(status_code=401, detail="You have not logged in")
-    # if not await authorization.check_permission(user_current, "view_users"):
-    #     raise HTTPException(status_code=403, detail="There is no access to this resource")
+    if not await authorization.check_permission(user_current, "view_users"):
+        raise HTTPException(status_code=403, detail="You have no access to this resource")
     users = await user_service.get_active_users_paginated(page, limit)
     return users
 
@@ -35,7 +35,7 @@ async def get_user(id: int):
     if not user_current:
         raise HTTPException(status_code=401, detail="You have not logged in")
     if not await authorization.check_permission(user_current, "view_user_details", id):
-        raise HTTPException(status_code=403, detail="There is no access to this resource")
+        raise HTTPException(status_code=403, detail="You have no access to this resource")
     user = await user_service.get_user_by_id(id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")

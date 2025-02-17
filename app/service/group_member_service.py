@@ -1,6 +1,7 @@
 from fastapi import HTTPException, status
 from app.repository.group_member_repository import GroupMemberRepository
 from app.model.user import User
+from app.model.group import Group
 from app.model.group_member import GroupMember
 from app.core.exceptions import DuplicateDataError
 from app.schema.group_member_schema import GroupMemberBase, GroupMemberCreate
@@ -44,7 +45,7 @@ class GroupMemberService:
         if not success:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Failed to remove user from group")
 
-    async def find_groups_by_user(self, user: User) -> list:
+    async def find_groups_by_user(self, user: User) -> list[Group]:
         """
         Tìm danh sách Group mà User thuộc về.
         Trả về danh sách đối tượng Group.

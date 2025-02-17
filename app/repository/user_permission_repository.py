@@ -9,7 +9,7 @@ from app.core.exceptions import NotFoundError
 
 
 class UserPermissionRepository:
-    async def find_user_permission(self, user_id: int, permission_name: str) -> list:
+    async def find_user_permission(self, user_id: int, permission_name: str) -> list[UserPermission]:
         """
         Lấy danh sách UserPermission theo user_id và permission_name,
         ưu tiên bản ghi có target_id = None (sắp xếp theo target_id ASC).
@@ -36,7 +36,7 @@ class UserPermissionRepository:
             )
             return result.scalars().all()
 
-    async def bulk_insert(self, user_permissions: list) -> None:
+    async def bulk_insert(self, user_permissions: list[UserPermission]) -> None:
         """
         Thêm nhiều bản ghi UserPermission cùng lúc, bỏ qua các bản ghi trùng lặp dựa theo unique constraint.
         """

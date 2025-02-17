@@ -2,6 +2,7 @@ from fastapi import HTTPException, status
 from app.repository.user_permission_repository import UserPermissionRepository
 from app.model.user_permission import UserPermission
 from app.model.user import User
+from app.model.permission import Permission
 from .user_service import UserService
 from .permission_service import PermissionService
 from app.schema.user_permission_schema import (
@@ -51,29 +52,23 @@ class UserPermissionService:
         await self.repository.bulk_insert(user_permissions_to_add)
         return assigned_permissions
 
-    async def set_permission(self, user, permissions: list) -> list:
+    async def set_permission(self, user: User, permissions: list[Permission]) -> list:
         """
         Khởi tạo quyền cho người dùng (ví dụ: cho superadmin).
         Tham số permissions là danh sách các đối tượng Permission.
         """
         user_permissions = []
-        user_permissions_to_add = []
         for permission in permissions:
-            # Kiểm tra đối tượng permission phải có thuộc tính `id`
-            if not hasattr(permission, "id"):
-                raise ValueError("Each item in permissions array must be an instance of Permission.")
-
             user_permission = UserPermission()
-            user_permission.user = user
-            user_permission.permission = permission
-            user_permission.is_active = True
+            user_permission.user_id = user.id
+            user_permission.permission_id = permission.id
+            user_permission.record_enabled = True
             user_permission.is_denied = False
             user_permission.target_id = None
 
-            user_permissions_to_add.append(user_permission)
             user_permissions.append(user_permission)
 
-        await self.repository.bulk_insert(user_permissions_to_add)
+        await self.repository.bulk_insert(user_permissions)
         return user_permissions
 
     async def find_permissions_by_user(self, user: User) -> list[UserPermission]:
@@ -167,7 +162,7 @@ class UserPermissionService:
                 detail=f"Không thể thu hồi quyền với id: {', '.join(str(up.id) for up in failed_deletes)}"
             )
 
-    async def has_permission(self, user_id: int, permission_name: str, target_id: int = None) -> int:
+    async def has_permission(self, user_id: int, permission_name: str, target_id: int | None = None) -> int:
         """
         Kiểm tra quyền của người dùng.
         Trả về:
@@ -177,7 +172,7 @@ class UserPermissionService:
         """
         user_permissions = await self.repository.find_user_permission(user_id, permission_name)
         for up in user_permissions:
-            if not up.is_active:
+            if not up.record_enabled:
                 continue
             if up.target_id is None:
                 return -1 if up.is_denied else 1
