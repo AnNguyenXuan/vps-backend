@@ -86,6 +86,12 @@ class PermissionService:
             'access_admin_dashboard': ('Truy cập Dashboard quản trị', False),
             'manage_system_settings': ('Quản lý cấu hình hệ thống', False),
             'view_system_logs': ('Quản lý nhật ký hệ thống', False),
+
+            # Quản lý S3
+            'view_s3_status': ('View S3 status',  False),
+            'create_s3_account': ('Create S3 account', False),
+            'import_s3_keys': ('Import S3 keys',   False),
+            'view_s3_buckets':  ('List S3 buckets',  False)
         }
 
         # Lấy danh sách quyền hiện có trong DB, chuyển thành dict mapping: name -> Permission

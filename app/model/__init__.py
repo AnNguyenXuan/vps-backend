@@ -9,10 +9,11 @@ from .user_permission import UserPermission
 from .blacklist_token import BlacklistToken
 from .refresh_token import RefreshToken
 from .product_option import ProductOption
-
+from .s3_account import S3Account 
 # Danh sách tất cả model (dùng để import gọn)
 all_models = [
     User,
+    S3Account,
     Product,
     Group,
     Permission,

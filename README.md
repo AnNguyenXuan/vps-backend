@@ -89,7 +89,17 @@ REFRESH_TOKEN_EXPIRE_DAYS=60
 JWT_SECRET=nNGw5zr...
 JWT_ISSUER=https://example.com
 JWT_AUDIENCE=https://shop.example.com
+
+FERNET_KEY=twHSLK6K9pYq1YIf6XfhITS9s520l8UIA0uWKHht+NZSe0PHGHJzoTE8XbZmZ+9B
+
+CEPH_ADMIN_ENDPOINT = "https://ceph-admin.yourdomain.com/admin"
+CEPH_PUBLIC_ENDPOINT = "https://ceph-admin.yourdomain.com"
+CEPH_REGION = "us-east-1"
+CEPH_ADMIN_ACCESS_KEY = "admin-access"
+CEPH_ADMIN_SECRET_KEY = "admin-secret"
 ```
+python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+
 
 ### 5. Khởi tạo hệ thống nhanh với `init_all`
 
@@ -109,7 +119,7 @@ Lệnh này sẽ:
 ### 6. Chạy server phát triển
 
 ```bash
-uvicorn app.main:app --reload
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 Truy cập ứng dụng tại: [http://127.0.0.1:8000](http://127.0.0.1:8000)

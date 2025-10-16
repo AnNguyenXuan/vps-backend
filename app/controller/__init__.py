@@ -7,6 +7,7 @@ from .permission_controller import router as permission_router
 from .user_controller import router as user_router
 from .user_permission_controller import router as user_permission_router
 from .security_controller import router as security_router
+from .s3_controller import router as s3_router
 
 routers = [
     security_router,
@@ -17,5 +18,6 @@ routers = [
     permission_router,
     # product_router,
     user_router,
+    s3_router,
     user_permission_router,
 ]

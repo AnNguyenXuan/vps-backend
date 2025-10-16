@@ -14,6 +14,7 @@ app/
 ├── core/
 │   ├── cmd.py
 │   ├── config.py
+│   ├── crypto.py
 │   ├── database.py
 │   ├── exceptions.py
 │   ├── security.py
