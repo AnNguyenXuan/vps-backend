@@ -11,12 +11,9 @@ from app.schema.auth_schema import (
     RefreshTokenRequest
 )
 
-
-
 user_service = UserService()
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
-
 
 @router.post("/login", response_model=TokenResponse)
 async def login(request: LoginRequest):
