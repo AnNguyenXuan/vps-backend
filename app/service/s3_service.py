@@ -1,39 +1,20 @@
 from __future__ import annotations
-
 import json
 from datetime import datetime, timezone
 from typing import Any, Dict
-
 import boto3
 from fastapi import HTTPException, status
-
 from app.repository.s3_repository import S3Repository
 from app.core.crypto import decrypt
 from app.core import config
 from .s3_admin_service import S3AdminService
-
 from datetime import timezone
-
-import secrets, string
-
 from starlette.concurrency import run_in_threadpool
-
 from botocore.config import Config
 from botocore.exceptions import ClientError, EndpointConnectionError, NoCredentialsError
-
+from app.core.utils import _rand_access_key, _rand_secret_key
 
 ALLOWED_PLACEMENTS = {"hdd", "ssd"}
-
-def _rand_access_key(n: int = 20) -> str:
-    # A-Z0-9
-    alphabet = string.ascii_uppercase + string.digits
-    return "".join(secrets.choice(alphabet) for _ in range(n))
-
-def _rand_secret_key(n: int = 40) -> str:
-    # a-zA-Z0-9
-    alphabet = string.ascii_letters + string.digits
-    return "".join(secrets.choice(alphabet) for _ in range(n))
-
 
 class S3Service:
     """
@@ -51,14 +32,13 @@ class S3Service:
         # Dùng trực tiếp giá trị đã cấu hình
         self.data_endpoint = config.CEPH_PUBLIC_ENDPOINT
         self.key_type = config.CEPH_KEY_TYPE
+        self.user_caps = config.CEPH_USER_CAPS
         self.region = config.CEPH_REGION
         if not (self.data_endpoint and self.region):
             raise RuntimeError("Missing CEPH_PUBLIC_ENDPOINT or CEPH_REGION in configuration.")
 
-        # Admin service (DI-friendly), mặc định đọc config trực tiếp
         self.admin = admin_service or S3AdminService()
 
-    # -------------------- Public methods (controller dùng) --------------------
     async def get_account_by_user(self, user_id: int):
         account = await self.repository.find_by_user(user_id)
         if not account or not getattr(account, "is_active", True):
@@ -101,6 +81,7 @@ class S3Service:
         uid = f"user-{user.id}"
         display_name = f"user-{user.id}-{access_key}"
         key_type = self.key_type
+        user_caps = self.user_caps
         print(data, uid, display_name)
         try:
             account = await run_in_threadpool (
@@ -110,6 +91,7 @@ class S3Service:
                 key_type=key_type,
                 access_key=access_key,
                 secret_key=secret_key,
+                user_caps=user_caps,
                 #default_placement=placement,
             )
         except RuntimeError as e:
@@ -207,3 +189,6 @@ class S3Service:
             })
 
         return results
+    
+    async def create_buckets(self, user_id : int) -> list[dict]:
+        return

@@ -32,6 +32,7 @@ async def check_s3_status():
         raise HTTPException(status_code=401, detail="You have not logged in")
 
     if not await authorization.check_permission(user_current, "view_s3_status"):
+        print("error")
         raise HTTPException(status_code=403, detail="You have no access to this resource")
 
     account = await s3_service.get_account_by_user(user_current.id)

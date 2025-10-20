@@ -1,3 +1,4 @@
+```
 Table users {
     id INT [pk, increment]
     username VARCHAR [not null, unique]
@@ -202,7 +203,7 @@ Table actions {
     score INT [default: 0]
 }
 
-
+```
 
 
 mô tả, giải thích:

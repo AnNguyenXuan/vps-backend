@@ -8,7 +8,7 @@ from .user_controller import router as user_router
 from .user_permission_controller import router as user_permission_router
 from .security_controller import router as security_router
 from .s3_controller import router as s3_router
-
+from .bucket_controller import router as bucket_router
 routers = [
     security_router,
     category_router,
@@ -20,4 +20,5 @@ routers = [
     user_router,
     s3_router,
     user_permission_router,
+    bucket_router
 ]

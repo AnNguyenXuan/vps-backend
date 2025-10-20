@@ -1,13 +1,10 @@
 from __future__ import annotations
-
 from typing import Any, Dict, Optional
 from urllib.parse import quote
-
 import requests
 from botocore.auth import SigV4Auth
 from botocore.awsrequest import AWSRequest
 from botocore.credentials import Credentials
-
 from app.core import config
 
 
@@ -90,7 +87,7 @@ class S3AdminService:
     """
 
     def __init__(self):
-        admin_endpoint = config.CEPH_ADMIN_ENDPOINT          # ví dụ: "http://10.10.210.20:8080"
+        admin_endpoint = config.CEPH_ADMIN_ENDPOINT    
         admin_ak = config.CEPH_ADMIN_ACCESS_KEY
         admin_sk = config.CEPH_ADMIN_SECRET_KEY
         region = getattr(config, "CEPH_REGION", "us-east-1")
@@ -109,22 +106,20 @@ class S3AdminService:
             timeout=timeout,
         )
 
-    # --------- User Ops ---------
-
-    def get_user(self, uid: str) -> Dict[str, Any]:
+    async def get_user(self, uid: str) -> Dict[str, Any]:
         r = self.client.get("/user", {"uid": uid, "stats": "false"})
         if r.status_code != 200:
             raise RuntimeError(f"Cannot fetch user info: {r.status_code} {r.text}")
-        return r.json()
+        return await r.json()
 
-
-    def create_user(self, uid: str, display_name: str, key_type: str, access_key: str, secret_key: str) -> Dict: 
+    async def create_user(self, uid: str, display_name: str, key_type: str, access_key: str, secret_key: str, user_caps: str) -> Dict: 
         params = {
             "uid" : uid,
             "display-name" : display_name,
             "key-type": key_type,
             "access-key" : access_key,
             "secret-key" : secret_key,
+            "user_caps": user_caps,
             #"default-placement" : default_placement
         }
         """
@@ -139,7 +134,7 @@ class S3AdminService:
         info = self.client.get("/user",params={"format": "json", "uid": uid, "stats": "false"})
         info.raise_for_status()
 
-        return info.json()
+        return await info.json()
     
     def remove_user(self, uid: str) -> Dict[str, Any]:
         r = self.client.get("/user", {"uid": uid, "stats": "false"})
